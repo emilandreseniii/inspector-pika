@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+shared/dist/
+
+# Downloaded / generated tools and data — not source code
+data/
+tools/
+
+# Environment — keep the example, never commit real secrets
+.env
+!.env.example
+
+# Test artifacts
+test-results/
+playwright-report/
+
+# OS
+.DS_Store
+Thumbs.db
