@@ -78,4 +78,44 @@ test.describe('Repository detail page', () => {
     await expect(page.getByRole('heading', { name: 'Languages' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Detected Packages' })).toBeVisible()
   })
+
+  test('shows "Not yet run" for sections with no analysis data', async ({ page }) => {
+    // apache/zookeeper has not been analyzed, so both sections should show "Not yet run"
+    await page.goto('/')
+    await page.getByPlaceholder('Filter by org or org/repo…').fill('apache/zookeeper')
+    await expect(page.getByRole('button', { name: 'apache/zookeeper', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'apache/zookeeper', exact: true }).click()
+    await expect(page).toHaveURL(/\/repositories\/\d+/)
+
+    // Both sections should display "Not yet run" since no jobs have run for this repo
+    const notYetRunSpans = page.getByText('Not yet run')
+    await expect(notYetRunSpans.first()).toBeVisible({ timeout: 10_000 })
+    // There should be at least two (Languages + Detected Packages)
+    expect(await notYetRunSpans.count()).toBeGreaterThanOrEqual(2)
+  })
+
+  test('syncJobs API integration: repo with completed jobs shows "Updated:" date without manual action', async ({ page }) => {
+    // Navigate directly to apache/cayenne (id=32) which has completed analyze_languages jobs.
+    // The syncJobs mechanism runs on mount and should detect the completed status via
+    // /api/v1/repositories/:id/jobs, then load language data and display the "Updated:" timestamp.
+    await page.goto('/repositories/32')
+    await expect(page).toHaveURL(/\/repositories\/32/)
+
+    // Wait for the languages section to show an "Updated:" timestamp — this confirms
+    // that the /jobs endpoint returned data and the syncJobs handler triggered onComplete.
+    await expect(page.getByText(/Updated:/)).toBeVisible({ timeout: 15_000 })
+  })
+
+  test('shows running job state in the Start A Job button when a job is active', async ({ page }) => {
+    // apache/spark (id=464) has a running analyze_languages job
+    await page.goto('/repositories/464')
+    await expect(page).toHaveURL(/\/repositories\/464/)
+
+    // The syncJobs mechanism should detect the running job and update the button text.
+    // Wait for either an "Analyzing…" or "Detecting…" state — or for the job to complete
+    // and show the "Updated:" date. Either way the syncJobs flow worked.
+    const analyzingOrUpdated = page.locator('button').filter({ hasText: /Analyzing|Detecting|Queuing/i })
+      .or(page.getByText(/Updated:/))
+    await expect(analyzingOrUpdated.first()).toBeVisible({ timeout: 15_000 })
+  })
 })

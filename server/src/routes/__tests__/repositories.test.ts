@@ -121,8 +121,88 @@ describe('GET /api/v1/repositories/:id/languages', () => {
     expect(res.body.data).toEqual([])
   })
 
+  it('returns lastAnalyzedAt from the most recent completed analyze_languages job', async () => {
+    const completedAt = '2026-03-27T10:00:00.000Z'
+    vi.mocked(db.select)
+      .mockImplementationOnce(() => makeChain([mockLanguage]))                     // languages
+      .mockImplementationOnce(() => makeChain([{ id: 7, completedAt }])) // completed job
+    const res = await request(app).get('/api/v1/repositories/1/languages')
+    expect(res.status).toBe(200)
+    expect(res.body.analyzed).toBe(true)
+    expect(res.body.lastAnalyzedAt).toBe(completedAt)
+  })
+
+  it('returns lastAnalyzedAt: null when no completed analyze_languages job exists', async () => {
+    vi.mocked(db.select)
+      .mockImplementationOnce(() => makeChain([mockLanguage])) // languages
+      .mockImplementationOnce(() => makeChain([]))             // no completed jobs
+    const res = await request(app).get('/api/v1/repositories/1/languages')
+    expect(res.status).toBe(200)
+    expect(res.body.lastAnalyzedAt).toBeNull()
+  })
+
   it('returns 400 for a non-integer id', async () => {
     const res = await request(app).get('/api/v1/repositories/abc/languages')
+    expect(res.status).toBe(400)
+  })
+})
+
+// ─── GET /repositories/:id/jobs ─────────────────────────────────────────────
+
+const mockJob = {
+  id: 10,
+  type: 'analyze_languages',
+  status: 'completed',
+  error: null,
+  startedAt: new Date().toISOString(),
+  completedAt: new Date().toISOString(),
+}
+
+describe('GET /api/v1/repositories/:id/jobs', () => {
+  it('returns a map of most recent job per type', async () => {
+    // The endpoint calls db.select 3 times (once per job type: analyze_dependencies, analyze_languages, analyze_entities)
+    vi.mocked(db.select)
+      .mockImplementationOnce(() => makeChain([]))              // analyze_dependencies — no job
+      .mockImplementationOnce(() => makeChain([mockJob]))       // analyze_languages — has job
+      .mockImplementationOnce(() => makeChain([]))              // analyze_entities — no job
+    const res = await request(app).get('/api/v1/repositories/1/jobs')
+    expect(res.status).toBe(200)
+    expect(res.body.data).toHaveProperty('analyze_languages')
+    expect(res.body.data.analyze_languages.id).toBe(10)
+    expect(res.body.data.analyze_languages.status).toBe('completed')
+    // Types with no job should not appear in the map
+    expect(res.body.data).not.toHaveProperty('analyze_dependencies')
+    expect(res.body.data).not.toHaveProperty('analyze_entities')
+  })
+
+  it('returns empty object when no jobs exist for any type', async () => {
+    vi.mocked(db.select)
+      .mockImplementationOnce(() => makeChain([]))
+      .mockImplementationOnce(() => makeChain([]))
+      .mockImplementationOnce(() => makeChain([]))
+    const res = await request(app).get('/api/v1/repositories/1/jobs')
+    expect(res.status).toBe(200)
+    expect(res.body.data).toEqual({})
+  })
+
+  it('returns all three types when jobs exist for each', async () => {
+    const depJob = { ...mockJob, id: 1, type: 'analyze_dependencies' }
+    const langJob = { ...mockJob, id: 2, type: 'analyze_languages' }
+    const entJob = { ...mockJob, id: 3, type: 'analyze_entities', status: 'running' }
+    vi.mocked(db.select)
+      .mockImplementationOnce(() => makeChain([depJob]))
+      .mockImplementationOnce(() => makeChain([langJob]))
+      .mockImplementationOnce(() => makeChain([entJob]))
+    const res = await request(app).get('/api/v1/repositories/1/jobs')
+    expect(res.status).toBe(200)
+    expect(Object.keys(res.body.data)).toHaveLength(3)
+    expect(res.body.data.analyze_dependencies.id).toBe(1)
+    expect(res.body.data.analyze_languages.id).toBe(2)
+    expect(res.body.data.analyze_entities.status).toBe('running')
+  })
+
+  it('returns 400 for a non-integer id', async () => {
+    const res = await request(app).get('/api/v1/repositories/abc/jobs')
     expect(res.status).toBe(400)
   })
 })

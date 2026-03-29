@@ -10,22 +10,86 @@ const ORT_BIN = path.join(
   process.platform === 'win32' ? 'ort.bat' : 'ort'
 )
 
-function runProcess(cmd: string, args: string[], cwd: string): Promise<void> {
+function runProcess(cmd: string, args: string[], cwd: string): Promise<{ stderr: string }> {
   return new Promise((resolve, reject) => {
     const isWindows = process.platform === 'win32'
     const proc = isWindows
       ? spawn('cmd', ['/c', cmd, ...args], { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
       : spawn(cmd, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] })
 
+    let stderr = ''
     proc.stdout?.on('data', (d: Buffer) => process.stdout.write(d))
-    proc.stderr?.on('data', (d: Buffer) => process.stderr.write(d))
+    proc.stderr?.on('data', (d: Buffer) => { stderr += d.toString(); process.stderr.write(d) })
 
     proc.on('close', (code) => {
-      if (code === 0) resolve()
-      else reject(new Error(`Process "${cmd}" exited with code ${code}`))
+      if (code === 0) resolve({ stderr })
+      else reject(Object.assign(new Error(`Process "${cmd}" exited with code ${code}`), { stderr }))
     })
     proc.on('error', reject)
   })
+}
+
+// ORT v83 npm analyzer crashes with IllegalArgumentException when a devDependency
+// is referenced in the graph but its package data wasn't fetched (known ORT bug).
+// When this happens, temporarily write an ORT global config that disables npm/yarn/pnpm,
+// retry (Maven/Gradle still run), then clean up the temp config.
+const ORT_NPM_CRASH_PATTERN = /references do not actually refer to packages|IllegalArgumentException.*NPM/i
+
+const ORT_GLOBAL_CONFIG_DIR = path.join(
+  process.env.USERPROFILE ?? process.env.HOME ?? '',
+  '.ort', 'config'
+)
+const ORT_GLOBAL_CONFIG_PATH = path.join(ORT_GLOBAL_CONFIG_DIR, 'config.yml')
+
+async function withNpmDisabled<T>(fn: () => Promise<T>): Promise<T> {
+  const backupPath = ORT_GLOBAL_CONFIG_PATH + '.bak'
+  // ORT v83 config requires 'ort:' root key; use enabledPackageManagers to whitelist non-npm managers
+  const disableYaml = `ort:
+  analyzer:
+    enabledPackageManagers:
+      - Bazel
+      - Bundler
+      - Cargo
+      - Carthage
+      - CocoaPods
+      - Composer
+      - Conan
+      - Gleam
+      - GoMod
+      - GradleInspector
+      - Maven
+      - Mix
+      - NuGet
+      - OrtProjectFile
+      - PIP
+      - Pipenv
+      - PNPM
+      - Poetry
+      - Pub
+      - Rebar3
+      - SBT
+      - SpdxDocumentFile
+      - Stack
+      - SwiftPM
+      - Tycho
+      - Unmanaged
+      - Yarn2
+`
+  // Back up existing config if any
+  const existing = await fs.readFile(ORT_GLOBAL_CONFIG_PATH, 'utf-8').catch(() => null)
+  await fs.mkdir(ORT_GLOBAL_CONFIG_DIR, { recursive: true })
+  if (existing !== null) await fs.writeFile(backupPath, existing, 'utf-8')
+  await fs.writeFile(ORT_GLOBAL_CONFIG_PATH, disableYaml, 'utf-8')
+  try {
+    return await fn()
+  } finally {
+    if (existing !== null) {
+      await fs.writeFile(ORT_GLOBAL_CONFIG_PATH, existing, 'utf-8')
+      await fs.unlink(backupPath).catch(() => {})
+    } else {
+      await fs.unlink(ORT_GLOBAL_CONFIG_PATH).catch(() => {})
+    }
+  }
 }
 
 export function repoDirs(repo: string) {
@@ -55,21 +119,33 @@ export async function cloneOrUpdate(repo: string, sourceDir: string): Promise<vo
 
 export async function runOrtAnalyze(sourceDir: string, ortOutputDir: string): Promise<void> {
   await fs.mkdir(ortOutputDir, { recursive: true })
-  console.log(`[ORT] Running analyze on ${sourceDir}…`)
+  const resultPath = path.join(ortOutputDir, 'analyzer-result.json')
+  const baseArgs = ['analyze', '--input-dir', sourceDir, '--output-dir', ortOutputDir, '--output-formats', 'JSON']
+
+  const tryRun = async (extraArgs: string[] = []) => {
+    console.log(`[ORT] Running analyze on ${sourceDir}…`)
+    try {
+      await runProcess(ORT_BIN, [...baseArgs, ...extraArgs], PROJECT_ROOT)
+    } catch (err) {
+      // ORT exits with code 1 for non-fatal issues but still writes a valid result.
+      const resultExists = await fs.access(resultPath).then(() => true).catch(() => false)
+      if (resultExists) {
+        console.log(`[ORT] Exited with issues but result file was written — continuing.`)
+        return
+      }
+      throw err
+    }
+  }
+
   try {
-    await runProcess(ORT_BIN, [
-      'analyze',
-      '--input-dir', sourceDir,
-      '--output-dir', ortOutputDir,
-      '--output-formats', 'JSON',
-    ], PROJECT_ROOT)
-  } catch (err) {
-    // ORT exits with code 1 when there are unresolved issues but still writes a valid result.
-    // Only treat it as a real failure if no result file was produced.
-    const resultPath = path.join(ortOutputDir, 'analyzer-result.json')
-    const resultExists = await fs.access(resultPath).then(() => true).catch(() => false)
-    if (!resultExists) throw err
-    console.log(`[ORT] Exited with issues but result file was written — continuing.`)
+    await tryRun()
+  } catch (firstErr) {
+    const stderr = (firstErr as { stderr?: string }).stderr ?? ''
+    if (!ORT_NPM_CRASH_PATTERN.test(stderr)) throw firstErr
+
+    // Known ORT npm analyzer crash — retry with npm/yarn/pnpm disabled globally
+    console.warn(`[ORT] npm analyzer crash detected. Retrying with npm package managers disabled…`)
+    await withNpmDisabled(() => tryRun())
   }
 }
 

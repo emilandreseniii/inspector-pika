@@ -6,9 +6,9 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "db:push": "drizzle-kit push",
-    "db:migrate": "drizzle-kit migrate",
-    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push:pg --force",
+    "db:migrate": "drizzle-kit push:pg --force",
+    "db:generate": "drizzle-kit generate:pg",
     "db:studio": "drizzle-kit studio",
     "test": "vitest run",
     "test:watch": "vitest"

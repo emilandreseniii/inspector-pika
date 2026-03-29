@@ -22,7 +22,8 @@ export interface RepoSummary {
   metadata: Record<string, unknown>
 }
 
-function toRepoSummary(data: Awaited<ReturnType<typeof octokit.repos.get>>['data']): RepoSummary {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toRepoSummary(data: any): RepoSummary {
   return {
     owner: data.owner.login,
     name: data.name,

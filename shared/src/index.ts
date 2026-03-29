@@ -27,6 +27,7 @@ export const JobType = {
   EXPLORE_GITHUB_ORG: 'explore_github_org',
   ANALYZE_DEPENDENCIES: 'analyze_dependencies',
   ANALYZE_LANGUAGES: 'analyze_languages',
+  ANALYZE_ENTITIES: 'analyze_entities',
 } as const
 
 export const JobStatus = {
@@ -68,6 +69,12 @@ export const CreateJobSchema = z.discriminatedUnion('type', [
     type: z.literal('analyze_languages'),
     repoId: z.number().int().positive(),
     repo: z.string().regex(/^[\w.-]+\/[\w.-]+$/, 'Must be in owner/repo format'),
+  }),
+  z.object({
+    type: z.literal('analyze_entities'),
+    repoId: z.number().int().positive(),
+    repo: z.string().regex(/^[\w.-]+\/[\w.-]+$/, 'Must be in owner/repo format'),
+    forceReanalysis: z.boolean().optional(),
   }),
 ])
 
@@ -138,6 +145,51 @@ export const RepoPackageSchema = z.object({
   createdAt: z.string(),
 })
 export type RepoPackage = z.infer<typeof RepoPackageSchema>
+
+// ---- Entity analysis types ----
+
+export const RepoEntityApproachSchema = z.object({
+  id: z.number(),
+  repoId: z.number(),
+  language: z.string(),
+  approach: z.string(),
+  confidence: z.string(),
+  signals: z.array(z.string()),
+  detectedAt: z.string(),
+  entityCount: z.number().optional(),
+})
+export type RepoEntityApproach = z.infer<typeof RepoEntityApproachSchema>
+
+export const RepoEntityFieldSchema = z.object({
+  id: z.number(),
+  entityId: z.number(),
+  name: z.string(),
+  normalizedName: z.string(),
+  dataType: z.string(),
+  nativeType: z.string().nullable(),
+  isNullable: z.string().nullable(),
+  isPrimaryKey: z.string(),
+  isForeignKey: z.string(),
+  isUnique: z.string(),
+  defaultValue: z.string().nullable(),
+  ordinalPosition: z.number().nullable(),
+})
+export type RepoEntityField = z.infer<typeof RepoEntityFieldSchema>
+
+export const RepoEntitySchema = z.object({
+  id: z.number(),
+  repoId: z.number(),
+  name: z.string(),
+  normalizedName: z.string(),
+  entityType: z.string(),
+  confidence: z.string(),
+  primarySources: z.array(z.record(z.unknown())),
+  sourceApproach: RepoEntityApproachSchema.omit({ entityCount: true }).nullable().optional(),
+  fields: z.array(RepoEntityFieldSchema).optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+export type RepoEntity = z.infer<typeof RepoEntitySchema>
 
 // ---- API response wrappers ----
 

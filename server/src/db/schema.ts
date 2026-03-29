@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, jsonb, timestamp, unique } from 'drizzle-orm/pg-core'
+import { pgTable, serial, text, integer, boolean, jsonb, timestamp, unique, index } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
 // ---- Repositories (provider-agnostic) ----
@@ -99,6 +99,77 @@ export const repoPackages = pgTable('repo_packages', {
   uniqueRepoPackage: unique().on(table.repoId, table.packageId),
 }))
 
+// ---- Entity analysis tables ----
+
+export const repoEntityApproaches = pgTable('repo_entity_approaches', {
+  id: serial('id').primaryKey(),
+  repoId: integer('repo_id').references(() => repositories.id, { onDelete: 'cascade' }).notNull(),
+  language: text('language').notNull(),
+  approach: text('approach').notNull(),
+  confidence: text('confidence').notNull(),
+  signals: jsonb('signals').notNull().$type<string[]>().default([]),
+  detectedAt: timestamp('detected_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  repoIdIdx: index('repo_entity_approaches_repo_id_idx').on(table.repoId),
+  repoApproachUniq: unique('repo_entity_approaches_repo_approach_uniq').on(table.repoId, table.language, table.approach),
+}))
+
+export const repoEntities = pgTable('repo_entities', {
+  id: serial('id').primaryKey(),
+  repoId: integer('repo_id').references(() => repositories.id, { onDelete: 'cascade' }).notNull(),
+  name: text('name').notNull(),
+  normalizedName: text('normalized_name').notNull(),
+  sourceApproachId: integer('source_approach_id').references(() => repoEntityApproaches.id, { onDelete: 'set null' }),
+  entityType: text('entity_type').notNull(),
+  confidence: text('confidence').notNull(),
+  primarySources: jsonb('primary_sources').notNull().$type<SourceLocation[]>().default([]),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  repoIdIdx: index('repo_entities_repo_id_idx').on(table.repoId),
+  repoNormalizedNameUniq: unique('repo_entities_repo_normalized_name_uniq').on(table.repoId, table.normalizedName),
+  repoEntityTypeIdx: index('repo_entities_repo_entity_type_idx').on(table.repoId, table.entityType),
+}))
+
+export const repoEntityFields = pgTable('repo_entity_fields', {
+  id: serial('id').primaryKey(),
+  entityId: integer('entity_id').references(() => repoEntities.id, { onDelete: 'cascade' }).notNull(),
+  name: text('name').notNull(),
+  normalizedName: text('normalized_name').notNull(),
+  dataType: text('data_type').notNull(),
+  nativeType: text('native_type'),
+  isNullable: text('is_nullable'),
+  isPrimaryKey: text('is_primary_key').notNull().default('false'),
+  isForeignKey: text('is_foreign_key').notNull().default('false'),
+  isUnique: text('is_unique').notNull().default('false'),
+  defaultValue: text('default_value'),
+  ordinalPosition: integer('ordinal_position'),
+  metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  entityIdIdx: index('repo_entity_fields_entity_id_idx').on(table.entityId),
+  entityNormalizedNameUniq: unique('repo_entity_fields_entity_normalized_name_uniq').on(table.entityId, table.normalizedName),
+}))
+
+export const repoEntityRelationships = pgTable('repo_entity_relationships', {
+  id: serial('id').primaryKey(),
+  repoId: integer('repo_id').references(() => repositories.id, { onDelete: 'cascade' }).notNull(),
+  sourceEntityId: integer('source_entity_id').references(() => repoEntities.id, { onDelete: 'cascade' }).notNull(),
+  targetEntityId: integer('target_entity_id').references(() => repoEntities.id, { onDelete: 'set null' }),
+  targetEntityName: text('target_entity_name').notNull(),
+  relationshipType: text('relationship_type').notNull(),
+  sourceField: text('source_field'),
+  targetField: text('target_field'),
+  metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  repoIdIdx: index('repo_entity_relationships_repo_id_idx').on(table.repoId),
+  sourceEntityIdIdx: index('repo_entity_relationships_source_entity_id_idx').on(table.sourceEntityId),
+  targetEntityIdIdx: index('repo_entity_relationships_target_entity_id_idx').on(table.targetEntityId),
+  relUniq: unique('repo_entity_relationships_uniq').on(table.repoId, table.sourceEntityId, table.targetEntityName, table.relationshipType),
+}))
+
 // ---- Relations ----
 
 export const repositoriesRelations = relations(repositories, ({ many }) => ({
@@ -107,6 +178,8 @@ export const repositoriesRelations = relations(repositories, ({ many }) => ({
   components: many(repoComponents),
   apiEndpoints: many(repoApiEndpoints),
   docs: many(repoDocs),
+  entityApproaches: many(repoEntityApproaches),
+  entities: many(repoEntities),
 }))
 
 export const repoLanguagesRelations = relations(repoLanguages, ({ one }) => ({
@@ -132,3 +205,30 @@ export const repoDocsRelations = relations(repoDocs, ({ one }) => ({
 export const repoPackagesRelations = relations(repoPackages, ({ one }) => ({
   repository: one(repositories, { fields: [repoPackages.repoId], references: [repositories.id] }),
 }))
+
+export const repoEntityApproachesRelations = relations(repoEntityApproaches, ({ one, many }) => ({
+  repository: one(repositories, { fields: [repoEntityApproaches.repoId], references: [repositories.id] }),
+  entities: many(repoEntities),
+}))
+
+export const repoEntitiesRelations = relations(repoEntities, ({ one, many }) => ({
+  repository: one(repositories, { fields: [repoEntities.repoId], references: [repositories.id] }),
+  sourceApproach: one(repoEntityApproaches, { fields: [repoEntities.sourceApproachId], references: [repoEntityApproaches.id] }),
+  fields: many(repoEntityFields),
+  outgoingRelationships: many(repoEntityRelationships, { relationName: 'source' }),
+  incomingRelationships: many(repoEntityRelationships, { relationName: 'target' }),
+}))
+
+export const repoEntityFieldsRelations = relations(repoEntityFields, ({ one }) => ({
+  entity: one(repoEntities, { fields: [repoEntityFields.entityId], references: [repoEntities.id] }),
+}))
+
+export const repoEntityRelationshipsRelations = relations(repoEntityRelationships, ({ one }) => ({
+  repository: one(repositories, { fields: [repoEntityRelationships.repoId], references: [repositories.id] }),
+  sourceEntity: one(repoEntities, { fields: [repoEntityRelationships.sourceEntityId], references: [repoEntities.id], relationName: 'source' }),
+  targetEntity: one(repoEntities, { fields: [repoEntityRelationships.targetEntityId], references: [repoEntities.id], relationName: 'target' }),
+}))
+
+// Type alias used in JSONB columns above (declared after tables to avoid hoisting issues)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SourceLocation = any

@@ -33,21 +33,15 @@ export function parseNpmDependencies(content: string): ParsedDependency[] {
 }
 
 export function parsePipDependencies(content: string): ParsedDependency[] {
-  return content
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line && !line.startsWith('#'))
-    .map((line) => {
-      const match = line.match(/^([A-Za-z0-9_.-]+)([>=<!].+)?$/)
-      if (!match) return null
-      return {
-        name: match[1],
-        version: match[2]?.trim() ?? null,
-        isDevDependency: false,
-        githubRepo: null,
-      }
-    })
-    .filter((d): d is ParsedDependency => d !== null)
+  const results: ParsedDependency[] = []
+  for (const raw of content.split('\n')) {
+    const line = raw.trim()
+    if (!line || line.startsWith('#')) continue
+    const match = line.match(/^([A-Za-z0-9_.-]+)([>=<!].+)?$/)
+    if (!match) continue
+    results.push({ name: match[1], version: match[2]?.trim() ?? null, isDevDependency: false, githubRepo: null })
+  }
+  return results
 }
 
 export function parseGoDependencies(content: string): ParsedDependency[] {

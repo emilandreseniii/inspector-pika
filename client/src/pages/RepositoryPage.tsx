@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import type { Repository, RepoPackage, RepoLanguage } from '@inspector-pika/shared'
+import type { Repository, RepoPackage, RepoLanguage, RepoEntity, RepoEntityApproach } from '@inspector-pika/shared'
 import logo from '../assets/logo.svg'
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -20,13 +20,24 @@ export default function RepositoryPage() {
   const [languages, setLanguages] = useState<RepoLanguage[]>([])
   const [showJobMenu, setShowJobMenu] = useState(false)
 
+  const [entities, setEntities] = useState<RepoEntity[]>([])
+  const [entityApproaches, setEntityApproaches] = useState<RepoEntityApproach[]>([])
+  const [expandedEntity, setExpandedEntity] = useState<number | null>(null)
+
   const [depStatus, setDepStatus] = useState<JobStatus>('idle')
   const [depError, setDepError] = useState<string | null>(null)
   const [langStatus, setLangStatus] = useState<JobStatus>('idle')
   const [langError, setLangError] = useState<string | null>(null)
+  const [entityStatus, setEntityStatus] = useState<JobStatus>('idle')
+  const [entityError, setEntityError] = useState<string | null>(null)
+
+  const [langUpdatedAt, setLangUpdatedAt] = useState<string | null>(null)
+  const [depUpdatedAt, setDepUpdatedAt] = useState<string | null>(null)
+  const [entityUpdatedAt, setEntityUpdatedAt] = useState<string | null>(null)
 
   const depPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const langPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const entityPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -40,6 +51,73 @@ export default function RepositoryPage() {
     return () => document.removeEventListener('mousedown', handleOutsideClick)
   }, [showJobMenu])
 
+  // Syncs job statuses from the server and refreshes data for any that just completed.
+  // Called on mount and every 5 seconds.
+  const syncJobs = useRef<(() => Promise<void>) | null>(null)
+  syncJobs.current = async () => {
+    const res = await fetch(`/api/v1/repositories/${id}/jobs`).catch(() => null)
+    if (!res) return
+    const json = await res.json().catch(() => null)
+    if (!json?.data) return
+    const jobMap = json.data as Record<string, { id: number; status: string; error: string | null; completedAt: string | null }>
+
+    const sync = async (
+      key: string,
+      currentStatus: JobStatus,
+      setStatus: (s: JobStatus) => void,
+      setErr: (e: string | null) => void,
+      pollRef: React.MutableRefObject<ReturnType<typeof setInterval> | null>,
+      onComplete: () => Promise<void>,
+    ) => {
+      const job = jobMap[key]
+      if (!job) return
+      const serverStatus = job.status as JobStatus
+      if (serverStatus === currentStatus) return
+
+      if (serverStatus === 'completed' && currentStatus !== 'completed') {
+        setStatus('completed')
+        if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+        await onComplete()
+      } else if (serverStatus === 'failed' && currentStatus !== 'failed') {
+        setStatus('failed')
+        setErr(job.error ?? 'Job failed')
+        if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+      } else if ((serverStatus === 'pending' || serverStatus === 'running') && currentStatus === 'idle') {
+        setStatus(serverStatus)
+        // Start polling so further transitions are caught
+        startPolling(job.id, setStatus, setErr, pollRef, onComplete)
+      }
+    }
+
+    await Promise.all([
+      sync('analyze_languages', langStatus, setLangStatus, setLangError, langPollRef, async () => {
+        const r = await fetch(`/api/v1/repositories/${id}/languages`)
+        const j = await r.json()
+        if (!j.error) { setLanguages(j.data); if (j.lastAnalyzedAt) setLangUpdatedAt(fmtDate(j.lastAnalyzedAt)) }
+      }),
+      sync('analyze_dependencies', depStatus, setDepStatus, setDepError, depPollRef, async () => {
+        const r = await fetch(`/api/v1/repositories/${id}/packages`)
+        const j = await r.json()
+        if (!j.error) { setPackages(j.data); if (j.data[0]?.createdAt) setDepUpdatedAt(fmtDate(j.data[0].createdAt)) }
+      }),
+      sync('analyze_entities', entityStatus, setEntityStatus, setEntityError, entityPollRef, async () => {
+        const [er, ea] = await Promise.all([
+          fetch(`/api/v1/repositories/${id}/entities`).then((r) => r.json()),
+          fetch(`/api/v1/repositories/${id}/entity-approaches`).then((r) => r.json()),
+        ])
+        if (!er.error) setEntities(er.data)
+        if (!ea.error) { setEntityApproaches(ea.data); if (ea.data[0]?.createdAt) setEntityUpdatedAt(fmtDate(ea.data[0].createdAt)) }
+      }),
+    ])
+  }
+
+  // Run syncJobs on mount and every 5 seconds
+  useEffect(() => {
+    syncJobs.current?.()
+    const interval = setInterval(() => syncJobs.current?.(), 5000)
+    return () => clearInterval(interval)
+  }, [id])
+
   useEffect(() => {
     fetch(`/api/v1/repositories/${id}`)
       .then((r) => r.json())
@@ -48,7 +126,12 @@ export default function RepositoryPage() {
 
     fetch(`/api/v1/repositories/${id}/packages`)
       .then((r) => r.json())
-      .then((json) => { if (!json.error && json.data.length > 0) setPackages(json.data) })
+      .then((json) => {
+        if (!json.error && json.data.length > 0) {
+          setPackages(json.data)
+          if (json.data[0]?.createdAt) setDepUpdatedAt(fmtDate(json.data[0].createdAt))
+        }
+      })
       .catch(() => {})
 
     fetch(`/api/v1/repositories/${id}/languages`)
@@ -57,6 +140,23 @@ export default function RepositoryPage() {
         if (json.error) return
         if (json.data.length > 0) setLanguages(json.data)
         if (json.analyzed) setLangStatus('completed')
+        if (json.lastAnalyzedAt) setLangUpdatedAt(fmtDate(json.lastAnalyzedAt))
+      })
+      .catch(() => {})
+
+    fetch(`/api/v1/repositories/${id}/entities`)
+      .then((r) => r.json())
+      .then((json) => { if (!json.error && json.data.length > 0) setEntities(json.data) })
+      .catch(() => {})
+
+    fetch(`/api/v1/repositories/${id}/entity-approaches`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (!json.error && json.data.length > 0) {
+          setEntityApproaches(json.data)
+          setEntityStatus('completed')
+          if (json.data[0]?.createdAt) setEntityUpdatedAt(fmtDate(json.data[0].createdAt))
+        }
       })
       .catch(() => {})
   }, [id])
@@ -89,6 +189,36 @@ export default function RepositoryPage() {
     }, 3000)
   }
 
+  async function startEntityJob() {
+    if (!repo) return
+    setShowJobMenu(false)
+    setEntityStatus('pending')
+    setEntityError(null)
+    try {
+      const res = await fetch('/api/v1/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'analyze_entities', repoId: repo.id, repo: repo.fullName }),
+      })
+      const json = await res.json()
+      if (!res.ok) { setEntityStatus('failed'); setEntityError(json.error); return }
+      startPolling(json.data.id, setEntityStatus, setEntityError, entityPollRef, async () => {
+        const [er, ea] = await Promise.all([
+          fetch(`/api/v1/repositories/${id}/entities`).then((r) => r.json()),
+          fetch(`/api/v1/repositories/${id}/entity-approaches`).then((r) => r.json()),
+        ])
+        if (!er.error) setEntities(er.data)
+        if (!ea.error) {
+          setEntityApproaches(ea.data)
+          if (ea.data[0]?.createdAt) setEntityUpdatedAt(fmtDate(ea.data[0].createdAt))
+        }
+      })
+    } catch {
+      setEntityStatus('failed')
+      setEntityError('Failed to start job.')
+    }
+  }
+
   async function startJob(type: 'analyze_dependencies' | 'analyze_languages') {
     if (!repo) return
     setShowJobMenu(false)
@@ -107,7 +237,10 @@ export default function RepositoryPage() {
         startPolling(json.data.id, setDepStatus, setDepError, depPollRef, async () => {
           const r = await fetch(`/api/v1/repositories/${id}/packages`)
           const j = await r.json()
-          if (!j.error) setPackages(j.data)
+          if (!j.error) {
+            setPackages(j.data)
+            if (j.data[0]?.createdAt) setDepUpdatedAt(fmtDate(j.data[0].createdAt))
+          }
         })
       } catch {
         setDepStatus('failed')
@@ -127,7 +260,10 @@ export default function RepositoryPage() {
         startPolling(json.data.id, setLangStatus, setLangError, langPollRef, async () => {
           const r = await fetch(`/api/v1/repositories/${id}/languages`)
           const j = await r.json()
-          if (!j.error) setLanguages(j.data)
+          if (!j.error) {
+            setLanguages(j.data)
+            if (j.lastAnalyzedAt) setLangUpdatedAt(fmtDate(j.lastAnalyzedAt))
+          }
         })
       } catch {
         setLangStatus('failed')
@@ -139,11 +275,13 @@ export default function RepositoryPage() {
   useEffect(() => () => {
     if (depPollRef.current) clearInterval(depPollRef.current)
     if (langPollRef.current) clearInterval(langPollRef.current)
+    if (entityPollRef.current) clearInterval(entityPollRef.current)
   }, [])
 
   const isDepBusy = depStatus === 'pending' || depStatus === 'running'
   const isLangBusy = langStatus === 'pending' || langStatus === 'running'
-  const isAnyBusy = isDepBusy || isLangBusy
+  const isEntityBusy = entityStatus === 'pending' || entityStatus === 'running'
+  const isAnyBusy = isDepBusy || isLangBusy || isEntityBusy
 
   const totalBytes = languages.reduce((sum, l) => sum + (l.bytes ?? 0), 0)
 
@@ -177,7 +315,7 @@ export default function RepositoryPage() {
                     disabled={isAnyBusy}
                   >
                     {isAnyBusy
-                      ? `${isDepBusy ? (depStatus === 'pending' ? 'Queuing' : 'Analyzing') : (langStatus === 'pending' ? 'Queuing' : 'Detecting')}…`
+                      ? `${isDepBusy ? (depStatus === 'pending' ? 'Queuing' : 'Analyzing') : isLangBusy ? (langStatus === 'pending' ? 'Queuing' : 'Detecting') : (entityStatus === 'pending' ? 'Queuing' : 'Detecting')}…`
                       : '▼ Start A Job'}
                   </button>
                   {showJobMenu && (
@@ -188,6 +326,9 @@ export default function RepositoryPage() {
                       <button style={styles.menuItem} onClick={() => startJob('analyze_languages')}>
                         🔍 Analyze Languages
                       </button>
+                      <button style={styles.menuItem} onClick={() => startEntityJob()}>
+                        🗄 Detect Data Entities
+                      </button>
                     </div>
                   )}
                 </div>
@@ -195,6 +336,7 @@ export default function RepositoryPage() {
 
               {depError && <p style={styles.jobError}>{depError}</p>}
               {langError && <p style={styles.jobError}>{langError}</p>}
+              {entityError && <p style={styles.jobError}>{entityError}</p>}
 
               <table style={styles.table}>
                 <tbody>
@@ -238,10 +380,18 @@ export default function RepositoryPage() {
 
             {/* ── Languages section ── */}
             <div style={styles.section}>
-              <h3 style={styles.sectionHeading}>
-                Languages
-                {languages.length > 0 && <span style={styles.badge}>{languages.length}</span>}
-              </h3>
+              <div style={styles.sectionHeaderRow}>
+                <h3 style={styles.sectionHeading}>
+                  Languages
+                  {languages.length > 0 && <span style={styles.badge}>{languages.length}</span>}
+                </h3>
+                <div style={styles.sectionActions}>
+                  <span style={styles.updatedAt}>{langUpdatedAt ? `Updated: ${langUpdatedAt}` : 'Not yet run'}</span>
+                  <button style={{ ...styles.analyzeBtn, ...(isLangBusy ? styles.analyzeBtnBusy : {}) }} disabled={isLangBusy} onClick={() => startJob('analyze_languages')}>
+                    {isLangBusy ? 'Analyzing…' : 'Analyze'}
+                  </button>
+                </div>
+              </div>
 
               {isLangBusy && (
                 <p style={styles.muted}>Detection in progress…</p>
@@ -288,10 +438,18 @@ export default function RepositoryPage() {
 
             {/* ── Packages section ── */}
             <div style={{ ...styles.section, marginTop: 24 }}>
-              <h3 style={styles.sectionHeading}>
-                Detected Packages
-                {packages.length > 0 && <span style={styles.badge}>{packages.length}</span>}
-              </h3>
+              <div style={styles.sectionHeaderRow}>
+                <h3 style={styles.sectionHeading}>
+                  Detected Packages
+                  {packages.length > 0 && <span style={styles.badge}>{packages.length}</span>}
+                </h3>
+                <div style={styles.sectionActions}>
+                  <span style={styles.updatedAt}>{depUpdatedAt ? `Updated: ${depUpdatedAt}` : 'Not yet run'}</span>
+                  <button style={{ ...styles.analyzeBtn, ...(isDepBusy ? styles.analyzeBtnBusy : {}) }} disabled={isDepBusy} onClick={() => startJob('analyze_dependencies')}>
+                    {isDepBusy ? 'Analyzing…' : 'Analyze'}
+                  </button>
+                </div>
+              </div>
 
               {isDepBusy && (
                 <p style={styles.muted}>Analysis in progress — this may take several minutes…</p>
@@ -346,11 +504,155 @@ export default function RepositoryPage() {
                 </table>
               )}
             </div>
+            {/* ── Data Entities section ── */}
+            <div style={{ ...styles.section, marginTop: 24 }}>
+              <div style={styles.sectionHeaderRow}>
+                <h3 style={styles.sectionHeading}>
+                  Data Entities
+                  {entities.length > 0 && <span style={styles.badge}>{entities.length}</span>}
+                </h3>
+                <div style={styles.sectionActions}>
+                  <span style={styles.updatedAt}>{entityUpdatedAt ? `Updated: ${entityUpdatedAt}` : 'Not yet run'}</span>
+                  <button style={{ ...styles.analyzeBtn, ...(isEntityBusy ? styles.analyzeBtnBusy : {}) }} disabled={isEntityBusy} onClick={() => startEntityJob()}>
+                    {isEntityBusy ? 'Analyzing…' : 'Analyze'}
+                  </button>
+                </div>
+              </div>
+
+              {entityApproaches.length > 0 && (
+                <div style={styles.approachBadges}>
+                  {entityApproaches.map((a) => (
+                    <span key={a.id} style={{ ...styles.approachBadge, ...confidenceStyle(a.confidence) }} title={a.signals?.join('\n')}>
+                      {APPROACH_LABELS[a.approach] ?? a.approach}
+                      {a.entityCount != null ? ` (${a.entityCount})` : ''}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {isEntityBusy && <p style={styles.muted}>Detection in progress…</p>}
+
+              {!isEntityBusy && entities.length === 0 && entityStatus === 'idle' && (
+                <p style={styles.muted}>No entity data yet. Use <strong>Start A Job → Detect Data Entities</strong> to analyze.</p>
+              )}
+
+              {!isEntityBusy && entities.length === 0 && entityStatus !== 'idle' && (
+                <p style={styles.muted}>No data entities detected in this repository.</p>
+              )}
+
+              {entities.length > 0 && (
+                <table style={styles.pkgTable}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>Entity / Table</th>
+                      <th style={styles.th}>Type</th>
+                      <th style={{ ...styles.th, textAlign: 'right' as const }}>Fields</th>
+                      <th style={styles.th}>Source</th>
+                      <th style={styles.th}>Confidence</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {entities.map((entity) => (
+                      <>
+                        <tr
+                          key={entity.id}
+                          onClick={() => setExpandedEntity(expandedEntity === entity.id ? null : entity.id)}
+                          style={{ ...styles.entityRow, cursor: entity.fields?.length ? 'pointer' : 'default' }}
+                        >
+                          <td style={{ ...styles.td, fontFamily: 'monospace', fontWeight: 500 }}>
+                            {entity.fields?.length ? (expandedEntity === entity.id ? '▾ ' : '▸ ') : '  '}
+                            {entity.name}
+                          </td>
+                          <td style={styles.td}>{entity.entityType}</td>
+                          <td style={{ ...styles.td, textAlign: 'right' as const }}>{entity.fields?.length ?? 0}</td>
+                          <td style={styles.td}>{entity.sourceApproach ? (APPROACH_LABELS[entity.sourceApproach.approach] ?? entity.sourceApproach.approach) : '—'}</td>
+                          <td style={styles.td}>
+                            <span style={{ ...styles.confidenceBadge, ...confidenceStyle(entity.confidence) }}>
+                              {entity.confidence}
+                            </span>
+                          </td>
+                        </tr>
+                        {expandedEntity === entity.id && entity.fields && entity.fields.length > 0 && (
+                          <tr key={`${entity.id}-fields`}>
+                            <td colSpan={5} style={{ padding: 0 }}>
+                              <table style={{ ...styles.pkgTable, margin: '0 0 0 24px', width: 'calc(100% - 24px)', borderTop: 'none', borderRadius: 0 }}>
+                                <thead>
+                                  <tr>
+                                    <th style={{ ...styles.th, background: '#f0f2f5' }}>Column</th>
+                                    <th style={{ ...styles.th, background: '#f0f2f5' }}>Type</th>
+                                    <th style={{ ...styles.th, background: '#f0f2f5' }}>Normalized Type</th>
+                                    <th style={{ ...styles.th, background: '#f0f2f5' }}>Flags</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {entity.fields.map((field) => (
+                                    <tr key={field.id}>
+                                      <td style={{ ...styles.td, fontFamily: 'monospace', fontSize: 12 }}>{field.name}</td>
+                                      <td style={{ ...styles.td, fontSize: 12, color: '#57606a' }}>{field.nativeType ?? '—'}</td>
+                                      <td style={{ ...styles.td, fontSize: 12 }}>{field.dataType}</td>
+                                      <td style={{ ...styles.td, fontSize: 11 }}>
+                                        {field.isPrimaryKey === 'true' && <span style={styles.flag}>PK</span>}
+                                        {field.isForeignKey === 'true' && <span style={styles.flag}>FK</span>}
+                                        {field.isUnique === 'true' && <span style={{ ...styles.flag, background: '#ddf4ff', color: '#0969da' }}>UQ</span>}
+                                        {field.isNullable === 'false' && <span style={{ ...styles.flag, background: '#fff8c5', color: '#7d4e00' }}>NN</span>}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </>
         )}
       </main>
     </div>
   )
+}
+
+function fmtDate(iso: string): string {
+  return new Date(iso).toISOString().slice(0, 10)
+}
+
+const APPROACH_LABELS: Record<string, string> = {
+  jpa_hibernate: 'JPA/Hibernate',
+  mybatis: 'MyBatis',
+  jooq: 'jOOQ',
+  spring_data_jdbc: 'Spring Data JDBC',
+  django_orm: 'Django ORM',
+  sqlalchemy: 'SQLAlchemy',
+  prisma: 'Prisma',
+  typeorm: 'TypeORM',
+  drizzle_orm: 'Drizzle ORM',
+  sequelize: 'Sequelize',
+  mongoose: 'Mongoose',
+  activerecord: 'ActiveRecord',
+  gorm: 'GORM',
+  ent: 'Ent',
+  sqlc: 'sqlc',
+  ef_core: 'EF Core',
+  dapper: 'Dapper',
+  diesel: 'Diesel',
+  sea_orm: 'SeaORM',
+  eloquent: 'Eloquent',
+  doctrine: 'Doctrine',
+  sql_ddl: 'SQL DDL',
+  migration_files: 'Migrations',
+  protobuf: 'Protobuf',
+  graphql_schema: 'GraphQL',
+  openapi: 'OpenAPI',
+}
+
+function confidenceStyle(confidence: string): React.CSSProperties {
+  if (confidence === 'high') return { background: '#dafbe1', color: '#116329' }
+  if (confidence === 'medium') return { background: '#fff8c5', color: '#7d4e00' }
+  return { background: '#f6f8fa', color: '#57606a' }
 }
 
 const styles = {
@@ -499,7 +801,7 @@ const styles = {
   sectionHeading: {
     fontSize: 16,
     fontWeight: 600,
-    margin: '0 0 16px 0',
+    margin: 0,
     display: 'flex',
     alignItems: 'center',
     gap: 8,
@@ -560,5 +862,71 @@ const styles = {
     height: '100%',
     borderRadius: 4,
     transition: 'width 0.3s ease',
+  } as React.CSSProperties,
+  approachBadges: {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: 6,
+    marginBottom: 16,
+  } as React.CSSProperties,
+  approachBadge: {
+    display: 'inline-block',
+    padding: '3px 10px',
+    borderRadius: 12,
+    fontSize: 12,
+    fontWeight: 500,
+    cursor: 'default',
+  } as React.CSSProperties,
+  confidenceBadge: {
+    display: 'inline-block',
+    padding: '2px 8px',
+    borderRadius: 10,
+    fontSize: 11,
+    fontWeight: 500,
+  } as React.CSSProperties,
+  entityRow: {
+    transition: 'background 0.1s',
+  } as React.CSSProperties,
+  flag: {
+    display: 'inline-block',
+    padding: '1px 5px',
+    background: '#ffebe9',
+    color: '#cf222e',
+    borderRadius: 4,
+    fontSize: 10,
+    fontWeight: 700,
+    marginRight: 3,
+  } as React.CSSProperties,
+  sectionHeaderRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  } as React.CSSProperties,
+  sectionActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    flexShrink: 0,
+  } as React.CSSProperties,
+  updatedAt: {
+    fontSize: 12,
+    color: '#57606a',
+    whiteSpace: 'nowrap' as const,
+  } as React.CSSProperties,
+  analyzeBtn: {
+    padding: '5px 12px',
+    background: '#0969da',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 6,
+    cursor: 'pointer',
+    fontSize: 13,
+    fontWeight: 500,
+    whiteSpace: 'nowrap' as const,
+  } as React.CSSProperties,
+  analyzeBtnBusy: {
+    background: '#57606a',
+    cursor: 'default',
   } as React.CSSProperties,
 }
