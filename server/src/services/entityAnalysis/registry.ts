@@ -2,6 +2,8 @@ import { BaseExtractor, ExtractorContext } from './extractors/base'
 import { JpaExtractor } from './extractors/languages/java/jpa'
 import { MybatisExtractor } from './extractors/languages/java/mybatis'
 import { JooqExtractor } from './extractors/languages/java/jooq'
+import { SqlAlchemyExtractor } from './extractors/languages/python/sqlalchemy'
+import { DjangoExtractor } from './extractors/languages/python/django'
 import { SqlDdlExtractor } from './extractors/shared/sqlDdlExtractor'
 import { MigrationFileExtractor } from './extractors/shared/migrationFileExtractor'
 
@@ -28,9 +30,9 @@ register('cross-language', 'migration_files',   MigrationFileExtractor)
 // Registering them here means the detector can detect them and
 // the registry won't emit "no extractor registered" warnings.
 
-// Python
-// register('Python', 'django_orm',     DjangoExtractor)
-// register('Python', 'sqlalchemy',     SqlAlchemyExtractor)
+// ---- Python ----
+register('Python', 'sqlalchemy',  SqlAlchemyExtractor)
+register('Python', 'django_orm',  DjangoExtractor)
 
 // JavaScript / TypeScript
 // register('TypeScript', 'prisma',     PrismaExtractor)
