@@ -1,0 +1,75 @@
+{
+  "datetime": "2026-03-29T18-43-45",
+  "pages": [
+    {
+      "name": "01-home-repo-list",
+      "url": "/",
+      "waitFor": "tbody tr",
+      "title": "Home – Repository List",
+      "file": "01-home-repo-list.png"
+    },
+    {
+      "name": "02-jobs-list",
+      "url": "/jobs",
+      "waitFor": "table",
+      "title": "Jobs List",
+      "file": "02-jobs-list.png"
+    },
+    {
+      "name": "03-repo-cayenne",
+      "url": "/repositories/32",
+      "waitFor": ".content, main, #root",
+      "title": "Repository: apache/cayenne (languages + entities)",
+      "file": "03-repo-cayenne.png"
+    },
+    {
+      "name": "04-repo-guacamole",
+      "url": "/repositories/750",
+      "waitFor": ".content, main, #root",
+      "title": "Repository: apache/guacamole-client (packages + entities)",
+      "file": "04-repo-guacamole.png"
+    },
+    {
+      "name": "05-repo-syncope",
+      "url": "/repositories/550",
+      "waitFor": ".content, main, #root",
+      "title": "Repository: apache/syncope (92 entities)",
+      "file": "05-repo-syncope.png"
+    },
+    {
+      "name": "06-repo-zookeeper",
+      "url": "/repositories/1",
+      "waitFor": ".content, main, #root",
+      "title": "Repository: apache/zookeeper (not yet analyzed)",
+      "file": "06-repo-zookeeper.png"
+    },
+    {
+      "name": "07-job-running",
+      "url": "/jobs/55",
+      "waitFor": "table",
+      "title": "Job Detail: Running (analyze_dependencies apache/spark)",
+      "file": "07-job-running.png"
+    },
+    {
+      "name": "08-job-failed",
+      "url": "/jobs/48",
+      "waitFor": "table",
+      "title": "Job Detail: Failed (analyze_dependencies apache/guacamole-client)",
+      "file": "08-job-failed.png"
+    },
+    {
+      "name": "09-job-completed-org",
+      "url": "/jobs/54",
+      "waitFor": "table",
+      "title": "Job Detail: Completed (explore_github_org apache)",
+      "file": "09-job-completed-org.png"
+    },
+    {
+      "name": "10-job-completed-deps",
+      "url": "/jobs/49",
+      "waitFor": "table",
+      "title": "Job Detail: Completed (analyze_dependencies apache/guacamole-client)",
+      "file": "10-job-completed-deps.png"
+    }
+  ]
+}

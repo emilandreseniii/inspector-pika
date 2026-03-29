@@ -77,3 +77,7 @@ inspector-pika/
   data/            # Cloned repos and analysis output — not committed to git
   e2e/             # Playwright end-to-end tests
 ```
+
+## Screenshots
+
+See [docs/screenshots/screenshots.md](docs/screenshots/screenshots.md) for annotated screenshots of all major pages — repository list, repository detail (with language, dependency, and entity analysis data), job list, and job detail views (running, failed, and completed states).
