@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, and, ne } from 'drizzle-orm'
 import { db } from '../db'
 import { jobs } from '../db/schema'
 import { runJob } from '../services/jobRunner'
@@ -51,6 +51,27 @@ jobsRouter.get('/:id', async (req: Request, res: Response, next: NextFunction) =
     const [job] = await db.select().from(jobs).where(eq(jobs.id, id))
     if (!job) { res.status(404).json({ error: 'Job not found' }); return }
     res.json({ data: job })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// POST /api/v1/jobs/:id/cancel
+jobsRouter.post('/:id/cancel', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = parseInt(req.params.id, 10)
+    if (isNaN(id)) { res.status(400).json({ error: 'Invalid job id' }); return }
+    const [job] = await db.select().from(jobs).where(eq(jobs.id, id))
+    if (!job) { res.status(404).json({ error: 'Job not found' }); return }
+    if (job.status !== 'pending' && job.status !== 'running') {
+      res.status(409).json({ error: `Cannot cancel a job with status "${job.status}"` }); return
+    }
+    const [updated] = await db
+      .update(jobs)
+      .set({ status: 'cancelled', completedAt: new Date() })
+      .where(and(eq(jobs.id, id), ne(jobs.status, 'completed'), ne(jobs.status, 'failed')))
+      .returning()
+    res.json({ data: updated })
   } catch (err) {
     next(err)
   }

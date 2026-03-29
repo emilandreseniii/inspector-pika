@@ -35,6 +35,7 @@ export const JobStatus = {
   RUNNING: 'running',
   COMPLETED: 'completed',
   FAILED: 'failed',
+  CANCELLED: 'cancelled',
 } as const
 
 export const JobSchema = z.object({

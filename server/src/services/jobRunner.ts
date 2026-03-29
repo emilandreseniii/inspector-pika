@@ -1,4 +1,4 @@
-import { eq, and, count, desc } from 'drizzle-orm'
+import { eq, and, ne, count, desc } from 'drizzle-orm'
 import { db } from '../db'
 import { jobs, repositories, repoPackages, repoLanguages, repoEntityApproaches, repoEntities, repoEntityFields, repoEntityRelationships } from '../db/schema'
 import { fetchRepoSummary, fetchOrgRepos } from './github'
@@ -341,11 +341,11 @@ export async function runJob(jobId: number, input: CreateJobInput): Promise<void
     await db
       .update(jobs)
       .set({ status: 'completed', result, completedAt: new Date() })
-      .where(eq(jobs.id, jobId))
+      .where(and(eq(jobs.id, jobId), ne(jobs.status, 'cancelled')))
   } catch (err) {
     await db
       .update(jobs)
       .set({ status: 'failed', error: (err as Error).message, completedAt: new Date() })
-      .where(eq(jobs.id, jobId))
+      .where(and(eq(jobs.id, jobId), ne(jobs.status, 'cancelled')))
   }
 }

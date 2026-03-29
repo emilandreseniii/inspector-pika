@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { Job } from '@inspector-pika/shared'
 import StartJobModal from './StartJobModal'
 import SearchBox from './SearchBox'
@@ -11,6 +12,7 @@ const STATUS_COLORS: Record<string, string> = {
   running: '#0969da',
   completed: '#1a7f37',
   failed: '#cf222e',
+  cancelled: '#57606a',
 }
 
 const STATUS_BG: Record<string, string> = {
@@ -18,6 +20,7 @@ const STATUS_BG: Record<string, string> = {
   running: '#ddf4ff',
   completed: '#dafbe1',
   failed: '#ffebe9',
+  cancelled: '#f6f8fa',
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -103,6 +106,7 @@ function getSuggestions(jobs: Job[], search: string): string[] {
 }
 
 export default function JobsTab() {
+  const navigate = useNavigate()
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -173,7 +177,7 @@ export default function JobsTab() {
             </thead>
             <tbody>
               {pageRows.map((job) => (
-                <tr key={job.id}>
+                <tr key={job.id} style={styles.trClickable} onClick={() => navigate(`/jobs/${job.id}`)}>
                   <td style={styles.td}>{jobLabel(job.type, job.input)}</td>
                   <td style={styles.td}><StatusBadge status={job.status} /></td>
                   <td style={styles.td}>{job.startedAt ? new Date(job.startedAt).toLocaleString() : '—'}</td>
@@ -239,6 +243,9 @@ const styles = {
     padding: '10px 16px',
     borderBottom: '1px solid #f6f8fa',
     color: '#24292f',
+  } as React.CSSProperties,
+  trClickable: {
+    cursor: 'pointer',
   } as React.CSSProperties,
   muted: {
     color: '#57606a',
