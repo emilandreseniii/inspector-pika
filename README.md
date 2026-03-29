@@ -1,13 +1,15 @@
 # Inspector Pika
 
-A GitHub repository explorer that helps you understand any repo at a glance.
+A GitHub repository analysis tool that helps you understand any repo at a glance.
 
 ## What it does
 
-- **Dependency analysis** — detect all packages a repo depends on using [ORT](https://github.com/oss-review-toolkit/ort)
+- **Repo exploration** — browse and search repositories for a GitHub org, with filtering and pagination
 - **Language detection** — identify programming languages using [enry](https://github.com/go-enry/enry)
-- **Repo exploration** — browse and search repositories for a GitHub user or org
-- **Job queue** — long-running analyses run as background jobs with live status polling
+- **Dependency analysis** — detect all packages a repo depends on using [ORT](https://github.com/oss-review-toolkit/ort) v83
+- **Entity analysis** — detect data entities (tables, models) from JPA/Hibernate annotations, MyBatis XML mappers, jOOQ generated code, Flyway/Liquibase migrations, and raw SQL DDL
+- **Job queue** — long-running analyses run as background jobs with live status polling; each section of the repository page shows when it was last analyzed and an Analyze button
+- **Job management** — view job details, inspect input/result/error output, and cancel stuck or unwanted jobs
 - **Persistent cache** — explored repos and analysis results are stored in PostgreSQL
 
 ## Tech Stack
@@ -20,6 +22,7 @@ A GitHub repository explorer that helps you understand any repo at a glance.
 | GitHub    | Octokit (GitHub REST API)           |
 | Dep scan  | ORT (OSS Review Toolkit) v83        |
 | Lang scan | enry v1.2.0                         |
+| Testing   | Vitest (unit), Playwright (E2E)     |
 
 ## Getting Started
 
@@ -65,8 +68,11 @@ inspector-pika/
     src/
       routes/      # API endpoints
       services/    # GitHub API, ORT, enry, job runner
+        entityAnalysis/  # Entity detection + extraction pipeline
       db/          # Drizzle schema
   shared/          # Zod schemas + TypeScript types (used by both client and server)
+  scripts/         # DB migration SQL and setup utilities
+  docs/            # Research notes and architecture planning
   tools/           # Downloaded analysis tools (ORT, enry) — not committed to git
   data/            # Cloned repos and analysis output — not committed to git
   e2e/             # Playwright end-to-end tests
