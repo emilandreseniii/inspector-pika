@@ -1,5 +1,9 @@
 # Inspector Pika
 
+<p align="center">
+  <img src="docs/logo.svg" alt="Inspector Pika logo" width="180" />
+</p>
+
 A GitHub repository analysis tool that helps you understand any repo at a glance.
 
 ## What it does
