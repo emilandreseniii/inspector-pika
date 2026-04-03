@@ -60,9 +60,9 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 - [ ] **gRPC-Go** — detect service server implementations; defer to proto extractor for schema
 
 ### Entity Extractors
-- [ ] **GORM** — detect `gorm.Model` embedding, struct tags `gorm:"column:…"`, `AutoMigrate` calls
-- [ ] **Ent** — parse generated `ent/schema/*.go` files: `Fields()`, `Edges()`
-- [ ] **sqlc** — parse `sqlc.yaml` + `*.sql` query files; extract named queries and result types
+- [x] **GORM** — detect `gorm.Model` embedding, struct tags `gorm:"column:…"`, `AutoMigrate` calls
+- [x] **Ent** — parse generated `ent/schema/*.go` files: `Fields()`, `Edges()`
+- [x] **sqlc** — parse `sqlc.yaml` + `*.sql` query files; extract named queries and result types
 
 ---
 
@@ -134,4 +134,4 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 - [ ] **Rebuild shared dist automatically** — the shared package dist must be manually rebuilt (`npm run build`) before new job types become available to the server; wire this into the dev workflow
 - [x] **Python API detection signals** — add Tier A/B/C signals for FastAPI, Flask, Django REST to `apiAnalysis/detector.ts` so they appear in `api-approaches` before the extractor is built
 - [ ] **TypeScript/JavaScript API detection signals** — add signals for Express, NestJS, Fastify, Apollo to `apiAnalysis/detector.ts`
-- [ ] **Go API/entity detection signals** — add signals for Gin, Echo, GORM, Ent, sqlc to both detectors
+- [x] **Go API/entity detection signals** — add signals for Gin, Echo, GORM, Ent, sqlc to both detectors

@@ -12,6 +12,9 @@ import { TypeOrmExtractor } from './extractors/languages/typescript/typeorm'
 import { DrizzleExtractor } from './extractors/languages/typescript/drizzle'
 import { SequelizeExtractor } from './extractors/languages/typescript/sequelize'
 import { MongooseExtractor } from './extractors/languages/typescript/mongoose'
+import { GormExtractor } from './extractors/languages/go/gorm'
+import { EntExtractor } from './extractors/languages/go/ent'
+import { SqlcExtractor } from './extractors/languages/go/sqlc'
 import { SqlDdlExtractor } from './extractors/shared/sqlDdlExtractor'
 import { MigrationFileExtractor } from './extractors/shared/migrationFileExtractor'
 
@@ -62,8 +65,10 @@ register('JavaScript', 'mongoose',    MongooseExtractor)
 // C#
 // register('C#', 'ef_core',           EfCoreExtractor)
 
-// Go
-// register('Go', 'gorm',              GormExtractor)
+// ---- Go ----
+register('Go', 'gorm', GormExtractor)
+register('Go', 'ent',  EntExtractor)
+register('Go', 'sqlc', SqlcExtractor)
 
 // Rust
 // register('Rust', 'diesel',          DieselExtractor)
