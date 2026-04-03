@@ -253,13 +253,24 @@ async function detectRubyApproaches(sourceDir: string): Promise<DetectedApproach
 
   // ActiveRecord (Rails)
   const arSignals: string[] = []
-  if (/activerecord|rails/i.test(gemfileContent)) arSignals.push("Tier A: ActiveRecord/Rails found in Gemfile")
+  if (/activerecord|rails/i.test(gemfileContent)) arSignals.push('Tier A: ActiveRecord/Rails found in Gemfile')
   const migrateCount = await globCount(sourceDir, '**/db/migrate/*.rb')
   if (migrateCount > 0) arSignals.push(`Tier B: ${migrateCount} Rails migration file(s) found`)
   const schemaRb = await readSafe(join(sourceDir, 'db/schema.rb'))
-  if (schemaRb) arSignals.push("Tier B: db/schema.rb found")
+  if (schemaRb) arSignals.push('Tier B: db/schema.rb found')
   if (arSignals.length > 0) {
-    approaches.push({ language: 'Ruby', approach: 'activerecord', confidence: computeConfidence(arSignals), signals: arSignals })
+    approaches.push({ language: 'Ruby', approach: 'active_record', confidence: computeConfidence(arSignals), signals: arSignals })
+  }
+
+  // Sequel
+  const sequelSignals: string[] = []
+  if (/\bsequel\b/i.test(gemfileContent)) sequelSignals.push('Tier A: Sequel found in Gemfile')
+  const sequelModelCount = await grepDir(sourceDir, '**/*.rb', /Sequel::Model/, 10)
+  if (sequelModelCount > 0) sequelSignals.push(`Tier C: ${sequelModelCount} Sequel::Model subclass(es) found`)
+  const createTableCount = await grepDir(sourceDir, '**/*.rb', /DB\.create_table/, 10)
+  if (createTableCount > 0) sequelSignals.push(`Tier C: ${createTableCount} DB.create_table call(s) found`)
+  if (sequelSignals.length > 0) {
+    approaches.push({ language: 'Ruby', approach: 'sequel', confidence: computeConfidence(sequelSignals), signals: sequelSignals })
   }
 
   return approaches

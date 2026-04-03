@@ -41,6 +41,10 @@ export async function detectApiApproaches(
     detectorPromises.push(detectGoApiApproaches(sourceDir))
   }
 
+  if (detectedLanguages.has('Ruby')) {
+    detectorPromises.push(detectRubyApiApproaches(sourceDir))
+  }
+
   const results = await Promise.allSettled(detectorPromises)
   for (const result of results) {
     if (result.status === 'fulfilled') approaches.push(...result.value)
@@ -351,6 +355,30 @@ async function detectGoApiApproaches(sourceDir: string): Promise<DetectedApiAppr
   if (fiberHits.length > 0) fiberSignals.push(`Tier C: fiber.New found in ${fiberHits[0]}`)
   if (fiberSignals.length > 0) {
     approaches.push({ language: 'Go', approach: 'fiber', apiStyle: 'http', confidence: scoreConfidence(fiberSignals), signals: fiberSignals })
+  }
+
+  return approaches
+}
+
+// ── Ruby API detector ─────────────────────────────────────────────────────────
+
+async function detectRubyApiApproaches(sourceDir: string): Promise<DetectedApiApproach[]> {
+  const approaches: DetectedApiApproach[] = []
+
+  // Rails routes
+  const routesFiles = await globCount(sourceDir, '**/config/routes.rb')
+  if (routesFiles > 0) {
+    const signals: string[] = [`Tier B: config/routes.rb found`]
+    const resourceHits = await grepFirst(sourceDir, '**/config/routes.rb', /\bresources?\s+:/, 3)
+    if (resourceHits.length > 0) signals.push('Tier C: resources/resource routes found')
+    approaches.push({ language: 'Ruby', approach: 'rails_routes', apiStyle: 'http', confidence: 'high', signals })
+  }
+
+  // Grape
+  const grapeHits = await grepFirst(sourceDir, '**/*.rb', /Grape::API/, 3)
+  if (grapeHits.length > 0) {
+    const signals: string[] = [`Tier C: Grape::API subclass found in ${grapeHits[0]}`]
+    approaches.push({ language: 'Ruby', approach: 'grape', apiStyle: 'http', confidence: 'high', signals })
   }
 
   return approaches

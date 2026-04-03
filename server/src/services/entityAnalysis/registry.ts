@@ -15,6 +15,8 @@ import { MongooseExtractor } from './extractors/languages/typescript/mongoose'
 import { GormExtractor } from './extractors/languages/go/gorm'
 import { EntExtractor } from './extractors/languages/go/ent'
 import { SqlcExtractor } from './extractors/languages/go/sqlc'
+import { ActiveRecordExtractor } from './extractors/languages/ruby/activeRecord'
+import { SequelExtractor as SequelRubyExtractor } from './extractors/languages/ruby/sequel'
 import { SqlDdlExtractor } from './extractors/shared/sqlDdlExtractor'
 import { MigrationFileExtractor } from './extractors/shared/migrationFileExtractor'
 
@@ -59,8 +61,9 @@ register('JavaScript', 'sequelize',   SequelizeExtractor)
 register('TypeScript', 'mongoose',    MongooseExtractor)
 register('JavaScript', 'mongoose',    MongooseExtractor)
 
-// Ruby
-// register('Ruby', 'activerecord',     ActiveRecordExtractor)
+// ---- Ruby ----
+register('Ruby', 'active_record', ActiveRecordExtractor)
+register('Ruby', 'sequel',        SequelRubyExtractor)
 
 // C#
 // register('C#', 'ef_core',           EfCoreExtractor)

@@ -19,6 +19,8 @@ import { EchoExtractor } from './extractors/languages/go/echo'
 import { ChiExtractor } from './extractors/languages/go/chi'
 import { FiberExtractor } from './extractors/languages/go/fiber'
 import { NetHttpExtractor } from './extractors/languages/go/netHttp'
+import { RailsRoutesExtractor } from './extractors/languages/ruby/railsRoutes'
+import { GrapeExtractor } from './extractors/languages/ruby/grape'
 
 type ApiExtractorClass = new (ctx: ApiExtractorContext) => BaseApiExtractor
 
@@ -60,6 +62,10 @@ register('Go', 'echo',     EchoExtractor)
 register('Go', 'chi',      ChiExtractor)
 register('Go', 'fiber',    FiberExtractor)
 register('Go', 'net_http', NetHttpExtractor)
+
+// ── Ruby ──────────────────────────────────────────────────────────────────────
+register('Ruby', 'rails_routes', RailsRoutesExtractor)
+register('Ruby', 'grape',        GrapeExtractor)
 
 // ── Cross-language ────────────────────────────────────────────────────────────
 register('cross-language', 'grpc_proto',      GrpcProtoExtractor)

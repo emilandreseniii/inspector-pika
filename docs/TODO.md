@@ -81,12 +81,12 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 ## Ruby
 
 ### API Extractors
-- [ ] **Rails routes** — parse `config/routes.rb`; extract `resources`, `get/post/…`, `namespace`, `scope`
-- [ ] **Grape** — detect `desc`, `params`, `get/post/…` inside `Grape::API` subclasses
+- [x] **Rails routes** — parse `config/routes.rb`; extract `resources`, `get/post/…`, `namespace`, `scope`
+- [x] **Grape** — detect `desc`, `params`, `get/post/…` inside `Grape::API` subclasses
 
 ### Entity Extractors
-- [ ] **ActiveRecord** — detect `class Foo < ApplicationRecord`, parse schema migrations for column definitions
-- [ ] **Sequel** — detect `class Foo < Sequel::Model`, `DB.create_table` calls
+- [x] **ActiveRecord** — detect `class Foo < ApplicationRecord`, parse schema migrations for column definitions
+- [x] **Sequel** — detect `class Foo < Sequel::Model`, `DB.create_table` calls
 
 ---
 
