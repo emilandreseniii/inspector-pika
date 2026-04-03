@@ -33,6 +33,10 @@ export async function detectApiApproaches(
     detectorPromises.push(detectPythonApiApproaches(sourceDir))
   }
 
+  if (detectedLanguages.has('TypeScript') || detectedLanguages.has('JavaScript')) {
+    detectorPromises.push(detectJsApiApproaches(sourceDir))
+  }
+
   const results = await Promise.allSettled(detectorPromises)
   for (const result of results) {
     if (result.status === 'fulfilled') approaches.push(...result.value)
@@ -240,6 +244,36 @@ async function detectPythonApiApproaches(sourceDir: string): Promise<DetectedApi
 
   if (drfSignals.length > 0) {
     approaches.push({ language: 'Python', approach: 'django_rest_framework', apiStyle: 'http', confidence: scoreConfidence(drfSignals), signals: drfSignals })
+  }
+
+  return approaches
+}
+
+// ── TypeScript/JavaScript API detector ──────────────────────────────────────
+
+async function detectJsApiApproaches(sourceDir: string): Promise<DetectedApiApproach[]> {
+  const approaches: DetectedApiApproach[] = []
+
+  const pkgContent = await readSafe(join(sourceDir, 'package.json')) ?? ''
+
+  // ── Express ──────────────────────────────────────────────────────────────
+  const expressSignals: string[] = []
+  if (/["']express["']/i.test(pkgContent)) expressSignals.push('Tier A: express found in package.json')
+  const expressHits = await grepFirst(sourceDir, '**/*.{ts,js,mts,mjs}', /require\s*\(\s*['"]express['"]|from\s+['"]express['"]/, 3)
+  if (expressHits.length > 0) expressSignals.push(`Tier C: express import found in ${expressHits[0]}`)
+  if (expressSignals.length > 0) {
+    approaches.push({ language: 'TypeScript', approach: 'express', apiStyle: 'http', confidence: scoreConfidence(expressSignals), signals: expressSignals })
+  }
+
+  // ── NestJS ───────────────────────────────────────────────────────────────
+  const nestSignals: string[] = []
+  if (/["']@nestjs\/core["']|["']@nestjs\/common["']/i.test(pkgContent)) nestSignals.push('Tier A: @nestjs/core found in package.json')
+  const nestControllerFiles = await globCount(sourceDir, '**/*.controller.ts') + await globCount(sourceDir, '**/*.controller.js')
+  if (nestControllerFiles > 0) nestSignals.push(`Tier B: ${nestControllerFiles} *.controller.{ts,js} file(s) found`)
+  const nestHits = await grepFirst(sourceDir, '**/*.{ts,mts}', /@Controller\s*\(/, 3)
+  if (nestHits.length > 0) nestSignals.push(`Tier C: @Controller found in ${nestHits[0]}`)
+  if (nestSignals.length > 0) {
+    approaches.push({ language: 'TypeScript', approach: 'nestjs', apiStyle: 'http', confidence: scoreConfidence(nestSignals), signals: nestSignals })
   }
 
   return approaches

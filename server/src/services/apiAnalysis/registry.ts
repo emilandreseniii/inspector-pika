@@ -8,6 +8,8 @@ import { GrpcJavaStubExtractor } from './extractors/languages/java/grpcJavaStub'
 import { FastApiExtractor } from './extractors/languages/python/fastapi'
 import { FlaskExtractor } from './extractors/languages/python/flask'
 import { DjangoRestFrameworkExtractor } from './extractors/languages/python/djangoRestFramework'
+import { ExpressExtractor } from './extractors/languages/typescript/express'
+import { NestJsExtractor } from './extractors/languages/typescript/nestjs'
 
 type ApiExtractorClass = new (ctx: ApiExtractorContext) => BaseApiExtractor
 
@@ -33,6 +35,11 @@ register('Kotlin', 'grpc_java_stub', GrpcJavaStubExtractor)
 register('Python', 'fastapi',                FastApiExtractor)
 register('Python', 'flask',                  FlaskExtractor)
 register('Python', 'django_rest_framework',  DjangoRestFrameworkExtractor)
+
+// ── TypeScript / JavaScript ───────────────────────────────────────────────────
+register('TypeScript', 'express',  ExpressExtractor)
+register('JavaScript', 'express',  ExpressExtractor)
+register('TypeScript', 'nestjs',   NestJsExtractor)
 
 // ── Cross-language ────────────────────────────────────────────────────────────
 register('cross-language', 'grpc_proto', GrpcProtoExtractor)
