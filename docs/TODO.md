@@ -40,11 +40,11 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 - [ ] **gRPC-node / @grpc/grpc-js** — detect service implementations; defer to proto extractor for schema
 
 ### Entity Extractors
-- [ ] **Prisma** — parse `schema.prisma`: `model`, `@@map`, field types and attributes
-- [ ] **TypeORM** — detect `@Entity`, `@Column`, `@PrimaryGeneratedColumn`, `@ManyToOne` etc.
-- [ ] **Drizzle ORM** — detect `pgTable`/`mysqlTable`/`sqliteTable` schema definitions
-- [ ] **Sequelize** — detect `Model.init()`, `sequelize.define()`, field type maps
-- [ ] **Mongoose** — detect `new Schema({…})`, extract field names and types
+- [x] **Prisma** — parse `schema.prisma`: `model`, `@@map`, field types and attributes
+- [x] **TypeORM** — detect `@Entity`, `@Column`, `@PrimaryGeneratedColumn`, `@ManyToOne` etc.
+- [x] **Drizzle ORM** — detect `pgTable`/`mysqlTable`/`sqliteTable` schema definitions
+- [x] **Sequelize** — detect `Model.init()`, `sequelize.define()`, field type maps
+- [x] **Mongoose** — detect `new Schema({…})`, extract field names and types
 
 ---
 

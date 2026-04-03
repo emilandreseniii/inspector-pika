@@ -7,6 +7,11 @@ import { SqlAlchemyExtractor } from './extractors/languages/python/sqlalchemy'
 import { DjangoExtractor } from './extractors/languages/python/django'
 import { TortoiseOrmExtractor } from './extractors/languages/python/tortoiseOrm'
 import { PeeweeExtractor } from './extractors/languages/python/peewee'
+import { PrismaExtractor } from './extractors/languages/typescript/prisma'
+import { TypeOrmExtractor } from './extractors/languages/typescript/typeorm'
+import { DrizzleExtractor } from './extractors/languages/typescript/drizzle'
+import { SequelizeExtractor } from './extractors/languages/typescript/sequelize'
+import { MongooseExtractor } from './extractors/languages/typescript/mongoose'
 import { SqlDdlExtractor } from './extractors/shared/sqlDdlExtractor'
 import { MigrationFileExtractor } from './extractors/shared/migrationFileExtractor'
 
@@ -41,10 +46,15 @@ register('Python', 'django_orm',    DjangoExtractor)
 register('Python', 'tortoise_orm',  TortoiseOrmExtractor)
 register('Python', 'peewee',        PeeweeExtractor)
 
-// JavaScript / TypeScript
-// register('TypeScript', 'prisma',     PrismaExtractor)
-// register('TypeScript', 'typeorm',    TypeOrmExtractor)
-// register('TypeScript', 'drizzle_orm', DrizzleExtractor)
+// ---- JavaScript / TypeScript ----
+register('TypeScript', 'prisma',      PrismaExtractor)
+register('TypeScript', 'typeorm',     TypeOrmExtractor)
+register('JavaScript', 'typeorm',     TypeOrmExtractor)
+register('TypeScript', 'drizzle_orm', DrizzleExtractor)
+register('TypeScript', 'sequelize',   SequelizeExtractor)
+register('JavaScript', 'sequelize',   SequelizeExtractor)
+register('TypeScript', 'mongoose',    MongooseExtractor)
+register('JavaScript', 'mongoose',    MongooseExtractor)
 
 // Ruby
 // register('Ruby', 'activerecord',     ActiveRecordExtractor)
