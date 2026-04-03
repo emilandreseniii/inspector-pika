@@ -1,6 +1,7 @@
 import { BaseApiExtractor, ApiExtractorContext, DetectedApiApproach } from './extractors/base'
 import { SpringMvcExtractor } from './extractors/languages/java/springMvc'
 import { JaxRsExtractor } from './extractors/languages/java/jaxRs'
+import { SpringGraphqlExtractor } from './extractors/languages/java/springGraphql'
 import { GrpcProtoExtractor } from './extractors/shared/grpcProto'
 
 type ApiExtractorClass = new (ctx: ApiExtractorContext) => BaseApiExtractor
@@ -16,13 +17,15 @@ register('Java',   'spring_mvc',  SpringMvcExtractor)
 register('Kotlin', 'spring_mvc',  SpringMvcExtractor)  // same annotations
 register('Java',   'jax_rs',      JaxRsExtractor)
 register('Kotlin', 'jax_rs',      JaxRsExtractor)
+register('Java',   'spring_graphql', SpringGraphqlExtractor)
+register('Kotlin', 'spring_graphql', SpringGraphqlExtractor)
 
 // ── Cross-language ────────────────────────────────────────────────────────────
 register('cross-language', 'grpc_proto', GrpcProtoExtractor)
 
 // ── Future extractors (not yet implemented) ───────────────────────────────────
 // Java
-// register('Java',   'spring_graphql',  SpringGraphqlExtractor)
+// register('Java',   'spring_graphql',  SpringGraphqlExtractor)  // ✓ implemented
 // register('Java',   'netflix_dgs',     NetflixDgsExtractor)
 // Python
 // register('Python', 'flask',                    FlaskExtractor)

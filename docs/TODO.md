@@ -7,7 +7,7 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 ## Java
 
 ### API Extractors
-- [ ] **Spring GraphQL** — detect `@QueryMapping`, `@MutationMapping`, `@SchemaMapping`; detector signal exists, no extractor
+- [x] **Spring GraphQL** — detect `@QueryMapping`, `@MutationMapping`, `@SchemaMapping`; detector signal exists, no extractor
 - [ ] **Netflix DGS** — detect `@DgsQuery`, `@DgsMutation`, `@DgsSubscription`; detector signal exists, no extractor
 - [ ] **gRPC (generated Java stubs)** — detect server implementations that extend `*Grpc.ImplBase`; complements the proto-file extractor
 
