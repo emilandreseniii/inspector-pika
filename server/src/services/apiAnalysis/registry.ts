@@ -6,6 +6,7 @@ import { NetflixDgsExtractor } from './extractors/languages/java/netflixDgs'
 import { GrpcProtoExtractor } from './extractors/shared/grpcProto'
 import { OpenApiSpecExtractor } from './extractors/shared/openApiSpec'
 import { GraphQLSchemaExtractor } from './extractors/shared/graphqlSchema'
+import { ThriftExtractor } from './extractors/shared/thrift'
 import { GrpcJavaStubExtractor } from './extractors/languages/java/grpcJavaStub'
 import { FastApiExtractor } from './extractors/languages/python/fastapi'
 import { FlaskExtractor } from './extractors/languages/python/flask'
@@ -87,6 +88,7 @@ register('PHP', 'symfony', SymfonyExtractor)
 register('cross-language', 'grpc_proto',      GrpcProtoExtractor)
 register('cross-language', 'openapi_spec',    OpenApiSpecExtractor)
 register('cross-language', 'graphql_schema',  GraphQLSchemaExtractor)
+register('cross-language', 'thrift',          ThriftExtractor)
 
 // ── Future extractors (not yet implemented) ───────────────────────────────────
 // Java

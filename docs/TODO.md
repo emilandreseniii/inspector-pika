@@ -71,10 +71,10 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 ### API Extractors
 - [x] **OpenAPI / Swagger spec** — parse `openapi.yaml`/`swagger.json`; extract paths, methods, parameters, response schemas; highest fidelity source of truth when present
 - [x] **GraphQL schema files** — parse `*.graphql`/`*.gql`; extract `type Query`, `type Mutation`, `type Subscription` operations and their arguments
-- [ ] **Thrift** — parse `.thrift` files; extract services, methods, argument/return types (similar shape to proto extractor)
+- [x] **Thrift** — parse `.thrift` files; extract services, methods, argument/return types (similar shape to proto extractor)
 
 ### Entity Extractors
-- [ ] **Protobuf messages** — cross-language proto extractor already detects services; extend to also extract `message` definitions as entity surfaces
+- [x] **Protobuf messages** — cross-language proto extractor already detects services; extend to also extract `message` definitions as entity surfaces
 
 ---
 
@@ -133,5 +133,5 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 - [ ] **Concurrent clone locking** — git 128 errors occur when multiple analysis jobs clone the same repo simultaneously; add a per-repo lock so only one job clones/pulls at a time
 - [ ] **Rebuild shared dist automatically** — the shared package dist must be manually rebuilt (`npm run build`) before new job types become available to the server; wire this into the dev workflow
 - [x] **Python API detection signals** — add Tier A/B/C signals for FastAPI, Flask, Django REST to `apiAnalysis/detector.ts` so they appear in `api-approaches` before the extractor is built
-- [ ] **TypeScript/JavaScript API detection signals** — add signals for Express, NestJS, Fastify, Apollo to `apiAnalysis/detector.ts`
+- [x] **TypeScript/JavaScript API detection signals** — add signals for Express, NestJS, Fastify, Apollo to `apiAnalysis/detector.ts`
 - [x] **Go API/entity detection signals** — add signals for Gin, Echo, GORM, Ent, sqlc to both detectors

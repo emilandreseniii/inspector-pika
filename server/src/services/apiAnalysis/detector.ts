@@ -23,6 +23,7 @@ export async function detectApiApproaches(
     detectGrpcProto(sourceDir),
     detectOpenApiSpec(sourceDir),
     detectGraphQLSchema(sourceDir),
+    detectThrift(sourceDir),
   ]
 
   if (detectedLanguages.has('Java') || detectedLanguages.has('Kotlin')) {
@@ -314,6 +315,17 @@ async function detectJsApiApproaches(sourceDir: string): Promise<DetectedApiAppr
     approaches.push({ language: 'TypeScript', approach: 'hono', apiStyle: 'http', confidence: scoreConfidence(honoSignals), signals: honoSignals })
   }
 
+  // ── Apollo Server ─────────────────────────────────────────────────────────
+  const apolloSignals: string[] = []
+  if (/["']@apollo\/server["']|["']apollo-server["']|["']apollo-server-express["']/i.test(pkgContent)) {
+    apolloSignals.push('Tier A: Apollo Server found in package.json')
+  }
+  const apolloHits = await grepFirst(sourceDir, '**/*.{ts,js,mts,mjs}', /new\s+ApolloServer\s*\(|ApolloServer\s*\{/, 3)
+  if (apolloHits.length > 0) apolloSignals.push(`Tier C: ApolloServer instantiation found in ${apolloHits[0]}`)
+  if (apolloSignals.length > 0) {
+    approaches.push({ language: 'TypeScript', approach: 'graphql_schema', apiStyle: 'graphql', confidence: scoreConfidence(apolloSignals), signals: apolloSignals })
+  }
+
   return approaches
 }
 
@@ -495,6 +507,19 @@ async function detectGrpcProto(sourceDir: string): Promise<DetectedApiApproach[]
     confidence: serviceHits.length > 0 ? 'high' : 'medium',
     signals,
   }]
+}
+
+// ── Cross-language: Thrift ───────────────────────────────────────────────────
+
+async function detectThrift(sourceDir: string): Promise<DetectedApiApproach[]> {
+  const thriftFiles = await globCount(sourceDir, '**/*.thrift')
+  if (thriftFiles === 0) return []
+
+  const signals = [`Tier B: ${thriftFiles} .thrift file(s) found`]
+  const serviceHits = await grepFirst(sourceDir, '**/*.thrift', /^\s*service\s+\w+/, 3)
+  if (serviceHits.length > 0) signals.push(`Tier C: service block found in ${serviceHits[0]}`)
+
+  return [{ language: 'cross-language', approach: 'thrift', apiStyle: 'rpc', confidence: 'high', signals }]
 }
 
 // ── Cross-language: OpenAPI spec ─────────────────────────────────────────────

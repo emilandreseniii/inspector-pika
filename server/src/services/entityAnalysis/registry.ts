@@ -25,6 +25,7 @@ import { EloquentExtractor } from './extractors/languages/php/eloquent'
 import { DoctrineExtractor } from './extractors/languages/php/doctrine'
 import { SqlDdlExtractor } from './extractors/shared/sqlDdlExtractor'
 import { MigrationFileExtractor } from './extractors/shared/migrationFileExtractor'
+import { ProtoMessagesExtractor } from './extractors/shared/protoMessages'
 
 type ExtractorClass = new (ctx: ExtractorContext) => BaseExtractor
 
@@ -45,6 +46,7 @@ register('Kotlin', 'spring_data_jdbc', SpringDataJdbcExtractor)
 // ---- Cross-language ----
 register('cross-language', 'sql_ddl',           SqlDdlExtractor)
 register('cross-language', 'migration_files',   MigrationFileExtractor)
+register('cross-language', 'proto_messages',    ProtoMessagesExtractor)
 
 // ---- Stubs for future extractors (no-op placeholders) ----
 // These will be replaced with real implementations over time.

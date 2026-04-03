@@ -379,7 +379,10 @@ async function detectMigrationFiles(sourceDir: string): Promise<DetectedApproach
 async function detectProtobuf(sourceDir: string): Promise<DetectedApproach[]> {
   const count = await globCount(sourceDir, '**/*.proto')
   if (count === 0) return []
-  return [{ language: 'cross-language', approach: 'protobuf', confidence: 'high', signals: [`${count} .proto file(s) found`] }]
+  const signals = [`Tier B: ${count} .proto file(s) found`]
+  return [
+    { language: 'cross-language', approach: 'proto_messages', confidence: 'high', signals },
+  ]
 }
 
 async function detectOpenApi(sourceDir: string): Promise<DetectedApproach[]> {
