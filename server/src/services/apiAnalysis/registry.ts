@@ -10,6 +10,8 @@ import { FlaskExtractor } from './extractors/languages/python/flask'
 import { DjangoRestFrameworkExtractor } from './extractors/languages/python/djangoRestFramework'
 import { ExpressExtractor } from './extractors/languages/typescript/express'
 import { NestJsExtractor } from './extractors/languages/typescript/nestjs'
+import { FastifyExtractor } from './extractors/languages/typescript/fastify'
+import { HonoExtractor } from './extractors/languages/typescript/hono'
 
 type ApiExtractorClass = new (ctx: ApiExtractorContext) => BaseApiExtractor
 
@@ -40,6 +42,10 @@ register('Python', 'django_rest_framework',  DjangoRestFrameworkExtractor)
 register('TypeScript', 'express',  ExpressExtractor)
 register('JavaScript', 'express',  ExpressExtractor)
 register('TypeScript', 'nestjs',   NestJsExtractor)
+register('TypeScript', 'fastify',  FastifyExtractor)
+register('JavaScript', 'fastify',  FastifyExtractor)
+register('TypeScript', 'hono',     HonoExtractor)
+register('JavaScript', 'hono',     HonoExtractor)
 
 // ── Cross-language ────────────────────────────────────────────────────────────
 register('cross-language', 'grpc_proto', GrpcProtoExtractor)

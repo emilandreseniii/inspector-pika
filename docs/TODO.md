@@ -34,8 +34,8 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 ### API Extractors
 - [x] **Express** — detect `router.get/post/put/delete/patch`, `app.get/post/…`; extract path and middleware chain
 - [x] **NestJS** — detect `@Controller`, `@Get`, `@Post`, `@Body`, `@Param`, `@Query`; similar shape to Spring MVC
-- [ ] **Fastify** — detect `fastify.get/post/…`, `fastify.route()`
-- [ ] **Hono** — detect `app.get/post/…` with Hono-style routing
+- [x] **Fastify** — detect `fastify.get/post/…`, `fastify.route()`
+- [x] **Hono** — detect `app.get/post/…` with Hono-style routing
 - [ ] **Apollo Server / TypeGraphQL / Pothos** — detect GraphQL resolvers and schema definitions
 - [ ] **gRPC-node / @grpc/grpc-js** — detect service implementations; defer to proto extractor for schema
 

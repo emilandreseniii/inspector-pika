@@ -276,6 +276,24 @@ async function detectJsApiApproaches(sourceDir: string): Promise<DetectedApiAppr
     approaches.push({ language: 'TypeScript', approach: 'nestjs', apiStyle: 'http', confidence: scoreConfidence(nestSignals), signals: nestSignals })
   }
 
+  // ── Fastify ───────────────────────────────────────────────────────────────
+  const fastifySignals: string[] = []
+  if (/["']fastify["']/i.test(pkgContent)) fastifySignals.push('Tier A: fastify found in package.json')
+  const fastifyHits = await grepFirst(sourceDir, '**/*.{ts,js,mts,mjs}', /require\s*\(\s*['"]fastify['"]|from\s+['"]fastify['"]|Fastify\s*\(/, 3)
+  if (fastifyHits.length > 0) fastifySignals.push(`Tier C: fastify import found in ${fastifyHits[0]}`)
+  if (fastifySignals.length > 0) {
+    approaches.push({ language: 'TypeScript', approach: 'fastify', apiStyle: 'http', confidence: scoreConfidence(fastifySignals), signals: fastifySignals })
+  }
+
+  // ── Hono ──────────────────────────────────────────────────────────────────
+  const honoSignals: string[] = []
+  if (/["']hono["']/i.test(pkgContent)) honoSignals.push('Tier A: hono found in package.json')
+  const honoHits = await grepFirst(sourceDir, '**/*.{ts,js,mts,mjs}', /from\s+['"]hono['"]|new\s+Hono\s*\(/, 3)
+  if (honoHits.length > 0) honoSignals.push(`Tier C: hono import found in ${honoHits[0]}`)
+  if (honoSignals.length > 0) {
+    approaches.push({ language: 'TypeScript', approach: 'hono', apiStyle: 'http', confidence: scoreConfidence(honoSignals), signals: honoSignals })
+  }
+
   return approaches
 }
 
