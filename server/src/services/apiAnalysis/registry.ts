@@ -4,6 +4,7 @@ import { JaxRsExtractor } from './extractors/languages/java/jaxRs'
 import { SpringGraphqlExtractor } from './extractors/languages/java/springGraphql'
 import { NetflixDgsExtractor } from './extractors/languages/java/netflixDgs'
 import { GrpcProtoExtractor } from './extractors/shared/grpcProto'
+import { GrpcJavaStubExtractor } from './extractors/languages/java/grpcJavaStub'
 
 type ApiExtractorClass = new (ctx: ApiExtractorContext) => BaseApiExtractor
 
@@ -22,6 +23,8 @@ register('Java',   'spring_graphql', SpringGraphqlExtractor)
 register('Kotlin', 'spring_graphql', SpringGraphqlExtractor)
 register('Java',   'netflix_dgs',   NetflixDgsExtractor)
 register('Kotlin', 'netflix_dgs',   NetflixDgsExtractor)
+register('Java',   'grpc_java_stub', GrpcJavaStubExtractor)
+register('Kotlin', 'grpc_java_stub', GrpcJavaStubExtractor)
 
 // ── Cross-language ────────────────────────────────────────────────────────────
 register('cross-language', 'grpc_proto', GrpcProtoExtractor)
