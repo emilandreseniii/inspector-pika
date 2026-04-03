@@ -37,6 +37,10 @@ export async function detectApiApproaches(
     detectorPromises.push(detectJsApiApproaches(sourceDir))
   }
 
+  if (detectedLanguages.has('Go')) {
+    detectorPromises.push(detectGoApiApproaches(sourceDir))
+  }
+
   const results = await Promise.allSettled(detectorPromises)
   for (const result of results) {
     if (result.status === 'fulfilled') approaches.push(...result.value)
@@ -292,6 +296,61 @@ async function detectJsApiApproaches(sourceDir: string): Promise<DetectedApiAppr
   if (honoHits.length > 0) honoSignals.push(`Tier C: hono import found in ${honoHits[0]}`)
   if (honoSignals.length > 0) {
     approaches.push({ language: 'TypeScript', approach: 'hono', apiStyle: 'http', confidence: scoreConfidence(honoSignals), signals: honoSignals })
+  }
+
+  return approaches
+}
+
+// ── Go API approaches ─────────────────────────────────────────────────────────
+
+async function detectGoApiApproaches(sourceDir: string): Promise<DetectedApiApproach[]> {
+  const approaches: DetectedApiApproach[] = []
+
+  const goModContent = await readSafe(join(sourceDir, 'go.mod')) ?? ''
+
+  // ── net/http ──────────────────────────────────────────────────────────────
+  const httpSignals: string[] = []
+  if (/^module\s/m.test(goModContent)) httpSignals.push('Tier A: go.mod found (Go project)')
+  const httpHits = await grepFirst(sourceDir, '**/*.go', /http\.HandleFunc\s*\(|http\.NewServeMux\s*\(/, 3)
+  if (httpHits.length > 0) httpSignals.push(`Tier C: net/http route registration found in ${httpHits[0]}`)
+  if (httpSignals.length > 1) {  // require both Tier A and Tier C
+    approaches.push({ language: 'Go', approach: 'net_http', apiStyle: 'http', confidence: scoreConfidence(httpSignals), signals: httpSignals })
+  }
+
+  // ── Gin ───────────────────────────────────────────────────────────────────
+  const ginSignals: string[] = []
+  if (/gin-gonic\/gin/.test(goModContent)) ginSignals.push('Tier A: gin-gonic/gin found in go.mod')
+  const ginHits = await grepFirst(sourceDir, '**/*.go', /gin\.Default\s*\(\s*\)|gin\.New\s*\(\s*\)/, 3)
+  if (ginHits.length > 0) ginSignals.push(`Tier C: gin.Default/New found in ${ginHits[0]}`)
+  if (ginSignals.length > 0) {
+    approaches.push({ language: 'Go', approach: 'gin', apiStyle: 'http', confidence: scoreConfidence(ginSignals), signals: ginSignals })
+  }
+
+  // ── Echo ──────────────────────────────────────────────────────────────────
+  const echoSignals: string[] = []
+  if (/labstack\/echo/.test(goModContent)) echoSignals.push('Tier A: labstack/echo found in go.mod')
+  const echoHits = await grepFirst(sourceDir, '**/*.go', /echo\.New\s*\(\s*\)/, 3)
+  if (echoHits.length > 0) echoSignals.push(`Tier C: echo.New found in ${echoHits[0]}`)
+  if (echoSignals.length > 0) {
+    approaches.push({ language: 'Go', approach: 'echo', apiStyle: 'http', confidence: scoreConfidence(echoSignals), signals: echoSignals })
+  }
+
+  // ── Chi ───────────────────────────────────────────────────────────────────
+  const chiSignals: string[] = []
+  if (/go-chi\/chi/.test(goModContent)) chiSignals.push('Tier A: go-chi/chi found in go.mod')
+  const chiHits = await grepFirst(sourceDir, '**/*.go', /chi\.NewRouter\s*\(\s*\)/, 3)
+  if (chiHits.length > 0) chiSignals.push(`Tier C: chi.NewRouter found in ${chiHits[0]}`)
+  if (chiSignals.length > 0) {
+    approaches.push({ language: 'Go', approach: 'chi', apiStyle: 'http', confidence: scoreConfidence(chiSignals), signals: chiSignals })
+  }
+
+  // ── Fiber ─────────────────────────────────────────────────────────────────
+  const fiberSignals: string[] = []
+  if (/gofiber\/fiber/.test(goModContent)) fiberSignals.push('Tier A: gofiber/fiber found in go.mod')
+  const fiberHits = await grepFirst(sourceDir, '**/*.go', /fiber\.New\s*\(\s*\)/, 3)
+  if (fiberHits.length > 0) fiberSignals.push(`Tier C: fiber.New found in ${fiberHits[0]}`)
+  if (fiberSignals.length > 0) {
+    approaches.push({ language: 'Go', approach: 'fiber', apiStyle: 'http', confidence: scoreConfidence(fiberSignals), signals: fiberSignals })
   }
 
   return approaches

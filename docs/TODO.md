@@ -51,11 +51,11 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 ## Go
 
 ### API Extractors
-- [ ] **net/http** — detect `http.HandleFunc`, `mux.HandleFunc`, `ServeMux` patterns
-- [ ] **Gin** — detect `router.GET/POST/…`, `gin.RouterGroup`
-- [ ] **Echo** — detect `e.GET/POST/…`, `g.GET/POST/…` group patterns
-- [ ] **Chi** — detect `r.Get/Post/…`, `chi.NewRouter`
-- [ ] **Fiber** — detect `app.Get/Post/…`
+- [x] **net/http** — detect `http.HandleFunc`, `mux.HandleFunc`, `ServeMux` patterns
+- [x] **Gin** — detect `router.GET/POST/…`, `gin.RouterGroup`
+- [x] **Echo** — detect `e.GET/POST/…`, `g.GET/POST/…` group patterns
+- [x] **Chi** — detect `r.Get/Post/…`, `chi.NewRouter`
+- [x] **Fiber** — detect `app.Get/Post/…`
 - [ ] **gqlgen** — detect resolver implementations from generated `ResolverRoot` interface
 - [ ] **gRPC-Go** — detect service server implementations; defer to proto extractor for schema
 

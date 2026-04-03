@@ -12,6 +12,11 @@ import { ExpressExtractor } from './extractors/languages/typescript/express'
 import { NestJsExtractor } from './extractors/languages/typescript/nestjs'
 import { FastifyExtractor } from './extractors/languages/typescript/fastify'
 import { HonoExtractor } from './extractors/languages/typescript/hono'
+import { GinExtractor } from './extractors/languages/go/gin'
+import { EchoExtractor } from './extractors/languages/go/echo'
+import { ChiExtractor } from './extractors/languages/go/chi'
+import { FiberExtractor } from './extractors/languages/go/fiber'
+import { NetHttpExtractor } from './extractors/languages/go/netHttp'
 
 type ApiExtractorClass = new (ctx: ApiExtractorContext) => BaseApiExtractor
 
@@ -46,6 +51,13 @@ register('TypeScript', 'fastify',  FastifyExtractor)
 register('JavaScript', 'fastify',  FastifyExtractor)
 register('TypeScript', 'hono',     HonoExtractor)
 register('JavaScript', 'hono',     HonoExtractor)
+
+// ── Go ────────────────────────────────────────────────────────────────────────
+register('Go', 'gin',      GinExtractor)
+register('Go', 'echo',     EchoExtractor)
+register('Go', 'chi',      ChiExtractor)
+register('Go', 'fiber',    FiberExtractor)
+register('Go', 'net_http', NetHttpExtractor)
 
 // ── Cross-language ────────────────────────────────────────────────────────────
 register('cross-language', 'grpc_proto', GrpcProtoExtractor)
