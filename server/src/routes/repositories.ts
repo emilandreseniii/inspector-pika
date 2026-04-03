@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import { eq, desc, and, sql, count } from 'drizzle-orm'
 import { db } from '../db'
-import { repositories, repoPackages, repoLanguages, jobs, repoEntityApproaches, repoEntities, repoEntityFields, repoEntityRelationships } from '../db/schema'
+import { repositories, repoPackages, repoLanguages, jobs, repoEntityApproaches, repoEntities, repoEntityFields, repoEntityRelationships, repoApiApproaches, repoApiSurfaces, repoApiOps, repoApiOpParams } from '../db/schema'
 
 export const repositoriesRouter = Router()
 
@@ -149,7 +149,7 @@ repositoriesRouter.get('/:id/jobs', async (req: Request, res: Response, next: Ne
     const id = parseInt(req.params.id, 10)
     if (isNaN(id)) { res.status(400).json({ error: 'Invalid repository id' }); return }
 
-    const types = ['analyze_dependencies', 'analyze_languages', 'analyze_entities']
+    const types = ['analyze_dependencies', 'analyze_languages', 'analyze_entities', 'analyze_apis']
     const rows = await Promise.all(
       types.map((type) =>
         db.select({
@@ -192,6 +192,106 @@ repositoriesRouter.get('/:id/languages', async (req: Request, res: Response, nex
       ).orderBy(desc(jobs.completedAt)).limit(1),
     ])
     res.json({ data: rows, analyzed: completedJobs.length > 0, lastAnalyzedAt: completedJobs[0]?.completedAt ?? null })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// GET /api/v1/repositories/:id/api-approaches
+repositoriesRouter.get('/:id/api-approaches', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = parseInt(req.params.id, 10)
+    if (isNaN(id)) { res.status(400).json({ error: 'Invalid repository id' }); return }
+
+    const approaches = await db
+      .select()
+      .from(repoApiApproaches)
+      .where(eq(repoApiApproaches.repoId, id))
+      .orderBy(repoApiApproaches.language, repoApiApproaches.approach)
+
+    res.json({ data: approaches })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// GET /api/v1/repositories/:id/api-surfaces
+// Optional query param: ?style=http|graphql|rpc
+repositoriesRouter.get('/:id/api-surfaces', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = parseInt(req.params.id, 10)
+    if (isNaN(id)) { res.status(400).json({ error: 'Invalid repository id' }); return }
+
+    const surfaces = await db
+      .select()
+      .from(repoApiSurfaces)
+      .where(eq(repoApiSurfaces.repoId, id))
+      .orderBy(repoApiSurfaces.apiStyle, repoApiSurfaces.name)
+
+    const styleFilter = req.query.style as string | undefined
+    const filtered = styleFilter ? surfaces.filter((s) => s.apiStyle === styleFilter) : surfaces
+
+    // Attach op count per surface
+    const withCounts = await Promise.all(
+      filtered.map(async (s) => {
+        const [{ value }] = await db
+          .select({ value: count() })
+          .from(repoApiOps)
+          .where(eq(repoApiOps.surfaceId, s.id))
+        return { ...s, opCount: value }
+      }),
+    )
+
+    res.json({ data: withCounts })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// GET /api/v1/repositories/:id/api-ops
+// Optional query params: ?surfaceId=N  ?style=http|graphql|rpc
+repositoriesRouter.get('/:id/api-ops', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = parseInt(req.params.id, 10)
+    if (isNaN(id)) { res.status(400).json({ error: 'Invalid repository id' }); return }
+
+    const ops = await db
+      .select()
+      .from(repoApiOps)
+      .where(eq(repoApiOps.repoId, id))
+      .orderBy(repoApiOps.surfaceId, repoApiOps.path, repoApiOps.httpMethod)
+
+    const surfaceFilter = req.query.surfaceId ? parseInt(req.query.surfaceId as string, 10) : undefined
+    const styleFilter = req.query.style as string | undefined
+
+    let filtered = ops
+    if (surfaceFilter && !isNaN(surfaceFilter)) {
+      filtered = filtered.filter((o) => o.surfaceId === surfaceFilter)
+    }
+
+    // Attach params per op
+    const withParams = await Promise.all(
+      filtered.map(async (op) => {
+        const params = await db
+          .select()
+          .from(repoApiOpParams)
+          .where(eq(repoApiOpParams.opId, op.id))
+          .orderBy(repoApiOpParams.ordinalPosition)
+        return { ...op, params }
+      }),
+    )
+
+    // Apply style filter after joining with params (style is on the surface; filter by httpMethod presence as proxy)
+    const result = styleFilter
+      ? withParams.filter((o) => {
+          if (styleFilter === 'http') return o.httpMethod !== null
+          if (styleFilter === 'graphql') return o.operationType !== null
+          if (styleFilter === 'rpc') return o.rpcMethodName !== null
+          return true
+        })
+      : withParams
+
+    res.json({ data: result, total: result.length })
   } catch (err) {
     next(err)
   }

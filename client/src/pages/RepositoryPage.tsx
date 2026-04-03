@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import type { Repository, RepoPackage, RepoLanguage, RepoEntity, RepoEntityApproach } from '@inspector-pika/shared'
+import type { Repository, RepoPackage, RepoLanguage, RepoEntity, RepoEntityApproach, RepoApiApproachRecord, RepoApiSurface, RepoApiOp } from '@inspector-pika/shared'
 import logo from '../assets/logo.svg'
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -31,13 +31,22 @@ export default function RepositoryPage() {
   const [entityStatus, setEntityStatus] = useState<JobStatus>('idle')
   const [entityError, setEntityError] = useState<string | null>(null)
 
+  const [apiApproaches, setApiApproaches] = useState<RepoApiApproachRecord[]>([])
+  const [apiSurfaces, setApiSurfaces] = useState<RepoApiSurface[]>([])
+  const [apiOps, setApiOps] = useState<Record<number, RepoApiOp[]>>({})
+  const [expandedSurface, setExpandedSurface] = useState<number | null>(null)
+  const [apiStatus, setApiStatus] = useState<JobStatus>('idle')
+  const [apiError, setApiError] = useState<string | null>(null)
+
   const [langUpdatedAt, setLangUpdatedAt] = useState<string | null>(null)
   const [depUpdatedAt, setDepUpdatedAt] = useState<string | null>(null)
   const [entityUpdatedAt, setEntityUpdatedAt] = useState<string | null>(null)
+  const [apiUpdatedAt, setApiUpdatedAt] = useState<string | null>(null)
 
   const depPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const langPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const entityPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const apiPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -90,6 +99,14 @@ export default function RepositoryPage() {
     }
 
     await Promise.all([
+      sync('analyze_apis', apiStatus, setApiStatus, setApiError, apiPollRef, async () => {
+        const [ar, sr] = await Promise.all([
+          fetch(`/api/v1/repositories/${id}/api-approaches`).then((r) => r.json()),
+          fetch(`/api/v1/repositories/${id}/api-surfaces`).then((r) => r.json()),
+        ])
+        if (!ar.error) setApiApproaches(ar.data)
+        if (!sr.error) { setApiSurfaces(sr.data); if (sr.data[0]?.createdAt) setApiUpdatedAt(fmtDate(sr.data[0].createdAt)) }
+      }),
       sync('analyze_languages', langStatus, setLangStatus, setLangError, langPollRef, async () => {
         const r = await fetch(`/api/v1/repositories/${id}/languages`)
         const j = await r.json()
@@ -156,6 +173,22 @@ export default function RepositoryPage() {
           setEntityApproaches(json.data)
           setEntityStatus('completed')
           if (json.data[0]?.createdAt) setEntityUpdatedAt(fmtDate(json.data[0].createdAt))
+        }
+      })
+      .catch(() => {})
+
+    fetch(`/api/v1/repositories/${id}/api-approaches`)
+      .then((r) => r.json())
+      .then((json) => { if (!json.error && json.data.length > 0) setApiApproaches(json.data) })
+      .catch(() => {})
+
+    fetch(`/api/v1/repositories/${id}/api-surfaces`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (!json.error && json.data.length > 0) {
+          setApiSurfaces(json.data)
+          setApiStatus('completed')
+          if (json.data[0]?.createdAt) setApiUpdatedAt(fmtDate(json.data[0].createdAt))
         }
       })
       .catch(() => {})
@@ -276,12 +309,58 @@ export default function RepositoryPage() {
     if (depPollRef.current) clearInterval(depPollRef.current)
     if (langPollRef.current) clearInterval(langPollRef.current)
     if (entityPollRef.current) clearInterval(entityPollRef.current)
+    if (apiPollRef.current) clearInterval(apiPollRef.current)
   }, [])
+
+  async function startApiJob() {
+    if (!repo) return
+    setShowJobMenu(false)
+    setApiStatus('pending')
+    setApiError(null)
+    try {
+      const res = await fetch('/api/v1/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'analyze_apis', repoId: repo.id, repo: repo.fullName }),
+      })
+      const json = await res.json()
+      if (!res.ok) { setApiStatus('failed'); setApiError(json.error); return }
+      startPolling(json.data.id, setApiStatus, setApiError, apiPollRef, async () => {
+        const [ar, sr] = await Promise.all([
+          fetch(`/api/v1/repositories/${id}/api-approaches`).then((r) => r.json()),
+          fetch(`/api/v1/repositories/${id}/api-surfaces`).then((r) => r.json()),
+        ])
+        if (!ar.error) setApiApproaches(ar.data)
+        if (!sr.error) { setApiSurfaces(sr.data); if (sr.data[0]?.createdAt) setApiUpdatedAt(fmtDate(sr.data[0].createdAt)) }
+      })
+    } catch {
+      setApiStatus('failed')
+      setApiError('Failed to start job.')
+    }
+  }
+
+  async function loadSurfaceOps(surfaceId: number) {
+    if (apiOps[surfaceId]) return
+    const res = await fetch(`/api/v1/repositories/${id}/api-ops?surfaceId=${surfaceId}`).catch(() => null)
+    if (!res) return
+    const json = await res.json().catch(() => null)
+    if (!json?.error) setApiOps((prev) => ({ ...prev, [surfaceId]: json.data }))
+  }
+
+  function toggleSurface(surfaceId: number) {
+    if (expandedSurface === surfaceId) {
+      setExpandedSurface(null)
+    } else {
+      setExpandedSurface(surfaceId)
+      loadSurfaceOps(surfaceId)
+    }
+  }
 
   const isDepBusy = depStatus === 'pending' || depStatus === 'running'
   const isLangBusy = langStatus === 'pending' || langStatus === 'running'
   const isEntityBusy = entityStatus === 'pending' || entityStatus === 'running'
-  const isAnyBusy = isDepBusy || isLangBusy || isEntityBusy
+  const isApiBusy = apiStatus === 'pending' || apiStatus === 'running'
+  const isAnyBusy = isDepBusy || isLangBusy || isEntityBusy || isApiBusy
 
   const totalBytes = languages.reduce((sum, l) => sum + (l.bytes ?? 0), 0)
 
@@ -315,7 +394,7 @@ export default function RepositoryPage() {
                     disabled={isAnyBusy}
                   >
                     {isAnyBusy
-                      ? `${isDepBusy ? (depStatus === 'pending' ? 'Queuing' : 'Analyzing') : isLangBusy ? (langStatus === 'pending' ? 'Queuing' : 'Detecting') : (entityStatus === 'pending' ? 'Queuing' : 'Detecting')}…`
+                      ? `${isDepBusy ? (depStatus === 'pending' ? 'Queuing' : 'Analyzing') : isLangBusy ? (langStatus === 'pending' ? 'Queuing' : 'Detecting') : isEntityBusy ? (entityStatus === 'pending' ? 'Queuing' : 'Detecting') : (apiStatus === 'pending' ? 'Queuing' : 'Scanning')}…`
                       : '▼ Start A Job'}
                   </button>
                   {showJobMenu && (
@@ -329,6 +408,9 @@ export default function RepositoryPage() {
                       <button style={styles.menuItem} onClick={() => startEntityJob()}>
                         🗄 Detect Data Entities
                       </button>
+                      <button style={styles.menuItem} onClick={() => startApiJob()}>
+                        🔌 Detect APIs
+                      </button>
                     </div>
                   )}
                 </div>
@@ -337,6 +419,7 @@ export default function RepositoryPage() {
               {depError && <p style={styles.jobError}>{depError}</p>}
               {langError && <p style={styles.jobError}>{langError}</p>}
               {entityError && <p style={styles.jobError}>{entityError}</p>}
+              {apiError && <p style={styles.jobError}>{apiError}</p>}
 
               <table style={styles.table}>
                 <tbody>
@@ -504,6 +587,143 @@ export default function RepositoryPage() {
                 </table>
               )}
             </div>
+            {/* ── API Surfaces section ── */}
+            <div style={{ ...styles.section, marginTop: 24 }}>
+              <div style={styles.sectionHeaderRow}>
+                <h3 style={styles.sectionHeading}>
+                  API Surfaces
+                  {apiSurfaces.length > 0 && <span style={styles.badge}>{apiSurfaces.length}</span>}
+                </h3>
+                <div style={styles.sectionActions}>
+                  <span style={styles.updatedAt}>{apiUpdatedAt ? `Updated: ${apiUpdatedAt}` : 'Not yet run'}</span>
+                  <button style={{ ...styles.analyzeBtn, ...(isApiBusy ? styles.analyzeBtnBusy : {}) }} disabled={isApiBusy} onClick={() => startApiJob()}>
+                    {isApiBusy ? 'Scanning…' : 'Analyze'}
+                  </button>
+                </div>
+              </div>
+
+              {apiApproaches.length > 0 && (
+                <div style={styles.approachBadges}>
+                  {apiApproaches.map((a) => (
+                    <span key={a.id} style={{ ...styles.approachBadge, ...confidenceStyle(a.confidence) }} title={a.signals?.join('\n')}>
+                      {API_APPROACH_LABELS[a.approach] ?? a.approach}
+                      {a.endpointCount != null ? ` (${a.endpointCount})` : ''}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {isApiBusy && <p style={styles.muted}>Detection in progress…</p>}
+
+              {!isApiBusy && apiSurfaces.length === 0 && apiStatus === 'idle' && (
+                <p style={styles.muted}>No API data yet. Use <strong>Start A Job → Detect APIs</strong> to analyze.</p>
+              )}
+
+              {!isApiBusy && apiSurfaces.length === 0 && apiStatus !== 'idle' && (
+                <p style={styles.muted}>No API surfaces detected in this repository.</p>
+              )}
+
+              {apiSurfaces.length > 0 && (
+                <table style={styles.pkgTable}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>Surface</th>
+                      <th style={styles.th}>Style</th>
+                      <th style={styles.th}>Base Path / Package</th>
+                      <th style={{ ...styles.th, textAlign: 'right' as const }}>Ops</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {apiSurfaces.map((surface) => (
+                      <>
+                        <tr
+                          key={surface.id}
+                          onClick={() => toggleSurface(surface.id)}
+                          style={{ ...styles.entityRow, cursor: 'pointer' }}
+                        >
+                          <td style={{ ...styles.td, fontFamily: 'monospace', fontWeight: 500 }}>
+                            {expandedSurface === surface.id ? '▾ ' : '▸ '}
+                            {surface.name}
+                          </td>
+                          <td style={styles.td}>
+                            <span style={{ ...styles.confidenceBadge, ...apiStyleBadge(surface.apiStyle) }}>
+                              {surface.apiStyle === 'rpc' ? (surface.protocol ?? 'rpc').toUpperCase() : surface.apiStyle.toUpperCase()}
+                            </span>
+                          </td>
+                          <td style={{ ...styles.td, fontFamily: 'monospace', fontSize: 12, color: '#57606a' }}>
+                            {surface.basePath ?? surface.packageOrModule ?? '—'}
+                          </td>
+                          <td style={{ ...styles.td, textAlign: 'right' as const }}>{surface.opCount ?? 0}</td>
+                        </tr>
+                        {expandedSurface === surface.id && (
+                          <tr key={`${surface.id}-ops`}>
+                            <td colSpan={4} style={{ padding: 0 }}>
+                              {!apiOps[surface.id] ? (
+                                <p style={{ ...styles.muted, padding: '8px 24px' }}>Loading…</p>
+                              ) : apiOps[surface.id].length === 0 ? (
+                                <p style={{ ...styles.muted, padding: '8px 24px' }}>No operations found.</p>
+                              ) : (
+                                <table style={{ ...styles.pkgTable, margin: '0 0 0 24px', width: 'calc(100% - 24px)', borderTop: 'none', borderRadius: 0 }}>
+                                  <thead>
+                                    <tr>
+                                      {surface.apiStyle === 'http' ? (
+                                        <>
+                                          <th style={{ ...styles.th, background: '#f0f2f5', width: 80 }}>Method</th>
+                                          <th style={{ ...styles.th, background: '#f0f2f5' }}>Path</th>
+                                          <th style={{ ...styles.th, background: '#f0f2f5' }}>Returns</th>
+                                          <th style={{ ...styles.th, background: '#f0f2f5', textAlign: 'right' as const }}>Params</th>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <th style={{ ...styles.th, background: '#f0f2f5' }}>RPC Method</th>
+                                          <th style={{ ...styles.th, background: '#f0f2f5' }}>Request</th>
+                                          <th style={{ ...styles.th, background: '#f0f2f5' }}>Response</th>
+                                          <th style={{ ...styles.th, background: '#f0f2f5' }}>Streaming</th>
+                                        </>
+                                      )}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {apiOps[surface.id].map((op) => (
+                                      <tr key={op.id}>
+                                        {surface.apiStyle === 'http' ? (
+                                          <>
+                                            <td style={{ ...styles.td, fontSize: 12 }}>
+                                              <span style={{ ...styles.confidenceBadge, ...httpMethodStyle(op.httpMethod ?? '') }}>
+                                                {op.httpMethod ?? '—'}
+                                              </span>
+                                            </td>
+                                            <td style={{ ...styles.td, fontFamily: 'monospace', fontSize: 12 }}>{op.path ?? '—'}</td>
+                                            <td style={{ ...styles.td, fontSize: 12, color: '#57606a', fontFamily: 'monospace' }}>{op.returnType ?? '—'}</td>
+                                            <td style={{ ...styles.td, fontSize: 12, textAlign: 'right' as const }}>{op.params?.length ?? 0}</td>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <td style={{ ...styles.td, fontFamily: 'monospace', fontSize: 12, fontWeight: 500 }}>{op.rpcMethodName ?? '—'}</td>
+                                            <td style={{ ...styles.td, fontFamily: 'monospace', fontSize: 12, color: '#57606a' }}>{op.requestType ?? '—'}</td>
+                                            <td style={{ ...styles.td, fontFamily: 'monospace', fontSize: 12, color: '#57606a' }}>{op.responseType ?? '—'}</td>
+                                            <td style={{ ...styles.td, fontSize: 12 }}>
+                                              {op.rpcStreaming && op.rpcStreaming !== 'none'
+                                                ? <span style={{ ...styles.confidenceBadge, background: '#ddf4ff', color: '#0969da' }}>{op.rpcStreaming}</span>
+                                                : <span style={{ color: '#57606a' }}>unary</span>}
+                                            </td>
+                                          </>
+                                        )}
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
             {/* ── Data Entities section ── */}
             <div style={{ ...styles.section, marginTop: 24 }}>
               <div style={styles.sectionHeaderRow}>
@@ -647,6 +867,33 @@ const APPROACH_LABELS: Record<string, string> = {
   protobuf: 'Protobuf',
   graphql_schema: 'GraphQL',
   openapi: 'OpenAPI',
+}
+
+const API_APPROACH_LABELS: Record<string, string> = {
+  spring_mvc: 'Spring MVC',
+  jax_rs: 'JAX-RS',
+  grpc_proto: 'gRPC (Proto)',
+  fastapi: 'FastAPI',
+  flask: 'Flask',
+  django_rest: 'Django REST',
+  express: 'Express',
+  netflix_dgs: 'Netflix DGS',
+  graphql_schema: 'GraphQL Schema',
+}
+
+function apiStyleBadge(style: string): React.CSSProperties {
+  if (style === 'rpc') return { background: '#fff8c5', color: '#7d4e00' }
+  if (style === 'graphql') return { background: '#f1e4ff', color: '#6e40c9' }
+  return { background: '#ddf4ff', color: '#0969da' }
+}
+
+function httpMethodStyle(method: string): React.CSSProperties {
+  if (method === 'GET') return { background: '#ddf4ff', color: '#0969da' }
+  if (method === 'POST') return { background: '#dafbe1', color: '#116329' }
+  if (method === 'PUT') return { background: '#fff8c5', color: '#7d4e00' }
+  if (method === 'PATCH') return { background: '#fff8c5', color: '#7d4e00' }
+  if (method === 'DELETE') return { background: '#ffebe9', color: '#cf222e' }
+  return { background: '#f6f8fa', color: '#57606a' }
 }
 
 function confidenceStyle(confidence: string): React.CSSProperties {

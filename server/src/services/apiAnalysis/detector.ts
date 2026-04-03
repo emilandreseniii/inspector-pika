@@ -1,0 +1,341 @@
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { DetectedApiApproach, Confidence } from './extractors/base'
+
+interface DetectedLanguage {
+  language: string
+  bytes: number
+}
+
+/**
+ * Phase 1: detect which API frameworks are used in a repository.
+ * Returns a list of DetectedApiApproach objects with confidence scores.
+ */
+export async function detectApiApproaches(
+  sourceDir: string,
+  languages: DetectedLanguage[],
+): Promise<DetectedApiApproach[]> {
+  const detectedLanguages = new Set(languages.map((l) => l.language))
+  const approaches: DetectedApiApproach[] = []
+
+  const detectorPromises: Promise<DetectedApiApproach[]>[] = [
+    // Cross-language detectors always run
+    detectGrpcProto(sourceDir),
+    detectOpenApiSpec(sourceDir),
+    detectGraphQLSchema(sourceDir),
+  ]
+
+  if (detectedLanguages.has('Java') || detectedLanguages.has('Kotlin')) {
+    detectorPromises.push(detectJavaApiApproaches(sourceDir))
+  }
+
+  const results = await Promise.allSettled(detectorPromises)
+  for (const result of results) {
+    if (result.status === 'fulfilled') approaches.push(...result.value)
+  }
+
+  return approaches
+}
+
+// ---- Java / Kotlin API detector ----
+
+async function detectJavaApiApproaches(sourceDir: string): Promise<DetectedApiApproach[]> {
+  const approaches: DetectedApiApproach[] = []
+
+  // Read build files for Tier A signals
+  const [pomContent, gradleContent, gradleKtsContent] = await Promise.all([
+    readSafe(join(sourceDir, 'pom.xml')),
+    readSafe(join(sourceDir, 'build.gradle')),
+    readSafe(join(sourceDir, 'build.gradle.kts')),
+  ])
+  const buildContent = (pomContent ?? '') + (gradleContent ?? '') + (gradleKtsContent ?? '')
+
+  // ── Spring MVC / Spring WebFlux ──────────────────────────────────────────
+
+  const springSignals: string[] = []
+
+  if (/spring-boot-starter-web\b|spring-webmvc\b|spring-boot-starter-webflux\b/.test(buildContent)) {
+    springSignals.push('Tier A: spring-boot-starter-web / spring-webmvc found in build file')
+  }
+
+  const controllerFiles = await globCount(sourceDir, '**/controller/*.java') +
+                          await globCount(sourceDir, '**/controllers/*.java') +
+                          await globCount(sourceDir, '**/controller/*.kt')
+  if (controllerFiles > 0) {
+    springSignals.push(`Tier B: ${controllerFiles} file(s) in controller/ directory`)
+  }
+
+  const restControllerHits = await grepFirst(sourceDir, '**/*.{java,kt}', /@RestController\b/, 3)
+  if (restControllerHits.length > 0) {
+    springSignals.push(`Tier C: @RestController found in ${restControllerHits[0]}`)
+  } else {
+    const controllerHits = await grepFirst(sourceDir, '**/*.{java,kt}', /@Controller\b/, 3)
+    if (controllerHits.length > 0) {
+      springSignals.push(`Tier C: @Controller found in ${controllerHits[0]}`)
+    }
+  }
+
+  if (springSignals.length > 0) {
+    approaches.push({
+      language: 'Java',
+      approach: 'spring_mvc',
+      apiStyle: 'http',
+      confidence: scoreConfidence(springSignals),
+      signals: springSignals,
+    })
+  }
+
+  // ── JAX-RS (Jersey / RESTEasy / Quarkus) ────────────────────────────────
+
+  const jaxRsSignals: string[] = []
+
+  if (/jakarta\.ws\.rs|javax\.ws\.rs|jersey-server|resteasy-core|quarkus-resteasy/.test(buildContent)) {
+    jaxRsSignals.push('Tier A: JAX-RS dependency (jakarta.ws.rs / jersey / resteasy) found in build file')
+  }
+
+  const resourceFiles = await globCount(sourceDir, '**/resource/*.java') +
+                        await globCount(sourceDir, '**/resources/*.java')
+  if (resourceFiles > 0) {
+    jaxRsSignals.push(`Tier B: ${resourceFiles} file(s) in resource/ directory`)
+  }
+
+  const pathHits = await grepFirst(sourceDir, '**/*.{java,kt}', /import\s+(?:jakarta|javax)\.ws\.rs\./, 3)
+  if (pathHits.length > 0) {
+    jaxRsSignals.push(`Tier C: JAX-RS import found in ${pathHits[0]}`)
+  }
+
+  if (jaxRsSignals.length > 0) {
+    approaches.push({
+      language: 'Java',
+      approach: 'jax_rs',
+      apiStyle: 'http',
+      confidence: scoreConfidence(jaxRsSignals),
+      signals: jaxRsSignals,
+    })
+  }
+
+  // ── Spring GraphQL ───────────────────────────────────────────────────────
+
+  const springGqlSignals: string[] = []
+
+  if (/spring-boot-starter-graphql|graphql-java-spring-boot/.test(buildContent)) {
+    springGqlSignals.push('Tier A: spring-boot-starter-graphql found in build file')
+  }
+
+  const gqlsFiles = await globCount(sourceDir, '**/*.graphqls') + await globCount(sourceDir, '**/*.graphql')
+  if (gqlsFiles > 0) springGqlSignals.push(`Tier B: ${gqlsFiles} GraphQL schema file(s) found`)
+
+  const queryMappingHits = await grepFirst(sourceDir, '**/*.{java,kt}', /@QueryMapping\b|@MutationMapping\b/, 3)
+  if (queryMappingHits.length > 0) {
+    springGqlSignals.push(`Tier C: @QueryMapping/@MutationMapping found in ${queryMappingHits[0]}`)
+  }
+
+  if (springGqlSignals.length > 0) {
+    approaches.push({
+      language: 'Java',
+      approach: 'spring_graphql',
+      apiStyle: 'graphql',
+      confidence: scoreConfidence(springGqlSignals),
+      signals: springGqlSignals,
+    })
+  }
+
+  // ── Netflix DGS ──────────────────────────────────────────────────────────
+
+  const dgsSignals: string[] = []
+
+  if (/graphql-dgs/.test(buildContent)) {
+    dgsSignals.push('Tier A: com.netflix.graphql.dgs dependency found in build file')
+  }
+
+  const dgsFetcherFiles = await globCount(sourceDir, '**/datafetcher/*.java') +
+                          await globCount(sourceDir, '**/fetcher/*.java')
+  if (dgsFetcherFiles > 0) dgsSignals.push(`Tier B: ${dgsFetcherFiles} file(s) in datafetcher/ directory`)
+
+  const dgsHits = await grepFirst(sourceDir, '**/*.{java,kt}', /@DgsComponent\b|@DgsQuery\b/, 3)
+  if (dgsHits.length > 0) dgsSignals.push(`Tier C: @DgsComponent/@DgsQuery found in ${dgsHits[0]}`)
+
+  if (dgsSignals.length > 0) {
+    approaches.push({
+      language: 'Java',
+      approach: 'netflix_dgs',
+      apiStyle: 'graphql',
+      confidence: scoreConfidence(dgsSignals),
+      signals: dgsSignals,
+    })
+  }
+
+  // ── gRPC Java ────────────────────────────────────────────────────────────
+  // Detection here confirms Java is using gRPC; the actual proto extraction
+  // is handled by the cross-language grpc_proto detector/extractor.
+  // We add a Java-specific signal set but only if grpc_proto is NOT already detected
+  // (to avoid duplicate surfaces). We skip this and let grpc_proto cover it.
+
+  return approaches
+}
+
+// ── Cross-language: gRPC proto ───────────────────────────────────────────────
+
+async function detectGrpcProto(sourceDir: string): Promise<DetectedApiApproach[]> {
+  const signals: string[] = []
+
+  const protoFiles = await globCount(sourceDir, '**/*.proto')
+  if (protoFiles === 0) return []
+
+  signals.push(`Tier B: ${protoFiles} .proto file(s) found`)
+
+  const serviceHits = await grepFirst(sourceDir, '**/*.proto', /^\s*service\s+\w+\s*\{/, 3)
+  if (serviceHits.length > 0) {
+    signals.push(`Tier C: 'service' block found in ${serviceHits[0]}`)
+  }
+
+  if (signals.length === 0) return []
+
+  return [{
+    language: 'cross-language',
+    approach: 'grpc_proto',
+    apiStyle: 'rpc',
+    confidence: serviceHits.length > 0 ? 'high' : 'medium',
+    signals,
+  }]
+}
+
+// ── Cross-language: OpenAPI spec ─────────────────────────────────────────────
+
+async function detectOpenApiSpec(sourceDir: string): Promise<DetectedApiApproach[]> {
+  const candidates = [
+    'openapi.yaml', 'openapi.json', 'swagger.yaml', 'swagger.json',
+    'api-spec.yaml', 'api-spec.json',
+  ]
+
+  for (const name of candidates) {
+    const content = await readSafe(join(sourceDir, name))
+    if (content && /openapi:|swagger:|paths:/.test(content)) {
+      return [{
+        language: 'cross-language',
+        approach: 'openapi_spec',
+        apiStyle: 'http',
+        confidence: 'high',
+        signals: [`Tier B+C: ${name} found with openapi/swagger/paths content`],
+      }]
+    }
+  }
+
+  // Also check docs/ subdirectory
+  const docsHits = await globCountPaths(sourceDir, '**/openapi.yaml')
+  if (docsHits.length > 0) {
+    const content = await readSafe(join(sourceDir, docsHits[0]))
+    if (content && /openapi:|swagger:|paths:/.test(content)) {
+      return [{
+        language: 'cross-language',
+        approach: 'openapi_spec',
+        apiStyle: 'http',
+        confidence: 'high',
+        signals: [`Tier B+C: ${docsHits[0]} found with openapi content`],
+      }]
+    }
+  }
+
+  return []
+}
+
+// ── Cross-language: GraphQL schema ───────────────────────────────────────────
+
+async function detectGraphQLSchema(sourceDir: string): Promise<DetectedApiApproach[]> {
+  const count = await globCount(sourceDir, '**/*.graphql') + await globCount(sourceDir, '**/*.graphqls')
+  if (count === 0) return []
+
+  const schemaHits = await grepFirst(sourceDir, '**/*.{graphql,graphqls}', /type\s+Query\b|type\s+Mutation\b|schema\s*\{/, 3)
+  if (schemaHits.length === 0) return []
+
+  return [{
+    language: 'cross-language',
+    approach: 'graphql_schema',
+    apiStyle: 'graphql',
+    confidence: 'high',
+    signals: [
+      `Tier B: ${count} GraphQL schema file(s) found`,
+      `Tier C: Query/Mutation/schema type found in ${schemaHits[0]}`,
+    ],
+  }]
+}
+
+// ---- Confidence scoring ----
+
+function scoreConfidence(signals: string[]): Confidence {
+  const hasA = signals.some((s) => s.startsWith('Tier A'))
+  const hasB = signals.some((s) => s.startsWith('Tier B'))
+  const hasC = signals.some((s) => s.startsWith('Tier C'))
+
+  if ((hasA && hasB) || (hasA && hasC) || (hasB && hasC) || (hasA && hasB && hasC)) return 'high'
+  if (hasA) return 'medium'
+  if (hasB || hasC) return 'low'
+  return 'low'
+}
+
+// ---- File system helpers ----
+
+async function readSafe(path: string): Promise<string | null> {
+  try { return await readFile(path, 'utf-8') } catch { return null }
+}
+
+async function globCount(sourceDir: string, pattern: string): Promise<number> {
+  return (await globCountPaths(sourceDir, pattern)).length
+}
+
+async function globCountPaths(sourceDir: string, pattern: string): Promise<string[]> {
+  const { readdir, stat } = await import('node:fs/promises')
+  const { join: pathJoin, relative } = await import('node:path')
+
+  const EXCLUDED = new Set(['node_modules', 'vendor', '.git', 'build', 'dist', 'target', '.gradle', 'generated', 'gen'])
+  const results: string[] = []
+  const matchFn = buildFileMatcher(pattern)
+
+  const walk = async (dir: string): Promise<void> => {
+    let entries: string[]
+    try { entries = await readdir(dir) } catch { return }
+    for (const entry of entries) {
+      if (EXCLUDED.has(entry)) continue
+      const full = pathJoin(dir, entry)
+      let s: Awaited<ReturnType<typeof stat>>
+      try { s = await stat(full) } catch { continue }
+      if (s.isDirectory()) await walk(full)
+      else if (matchFn(entry)) results.push(relative(sourceDir, full).replace(/\\/g, '/'))
+    }
+  }
+
+  await walk(sourceDir)
+  return results
+}
+
+async function grepFirst(sourceDir: string, fileGlob: string, pattern: RegExp, limit: number): Promise<string[]> {
+  const paths = await globCountPaths(sourceDir, fileGlob)
+  const hits: string[] = []
+  for (const file of paths) {
+    if (hits.length >= limit) break
+    try {
+      const content = await readFile(join(sourceDir, file), 'utf-8')
+      if (pattern.test(content)) hits.push(file)
+    } catch { /* skip */ }
+  }
+  return hits
+}
+
+function buildFileMatcher(pattern: string): (filename: string) => boolean {
+  const multiExtMatch = pattern.match(/\*\*\/\*\.\{([^}]+)\}$/)
+  if (multiExtMatch) {
+    const exts = multiExtMatch[1].split(',').map((e) => `.${e.trim()}`)
+    return (f) => exts.some((ext) => f.endsWith(ext))
+  }
+  const singleExtMatch = pattern.match(/\*\*\/\*\.(\w+)$/)
+  if (singleExtMatch) { const ext = `.${singleExtMatch[1]}`; return (f) => f.endsWith(ext) }
+  const filenameMatch = pattern.match(/\*\*\/([^*]+)$/)
+  if (filenameMatch) {
+    const target = filenameMatch[1]
+    if (!target.includes('*')) return (f) => f === target
+    const [pre, ...rest] = target.split('*')
+    const suf = rest.join('')
+    return (f) => f.startsWith(pre) && f.endsWith(suf)
+  }
+  return () => true
+}

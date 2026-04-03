@@ -28,6 +28,7 @@ export const JobType = {
   ANALYZE_DEPENDENCIES: 'analyze_dependencies',
   ANALYZE_LANGUAGES: 'analyze_languages',
   ANALYZE_ENTITIES: 'analyze_entities',
+  ANALYZE_APIS: 'analyze_apis',
 } as const
 
 export const JobStatus = {
@@ -73,6 +74,12 @@ export const CreateJobSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('analyze_entities'),
+    repoId: z.number().int().positive(),
+    repo: z.string().regex(/^[\w.-]+\/[\w.-]+$/, 'Must be in owner/repo format'),
+    forceReanalysis: z.boolean().optional(),
+  }),
+  z.object({
+    type: z.literal('analyze_apis'),
     repoId: z.number().int().positive(),
     repo: z.string().regex(/^[\w.-]+\/[\w.-]+$/, 'Must be in owner/repo format'),
     forceReanalysis: z.boolean().optional(),
@@ -191,6 +198,75 @@ export const RepoEntitySchema = z.object({
   updatedAt: z.string(),
 })
 export type RepoEntity = z.infer<typeof RepoEntitySchema>
+
+// ---- API analysis types ----
+
+export const RepoApiApproachRecordSchema = z.object({
+  id: z.number(),
+  repoId: z.number(),
+  language: z.string(),
+  approach: z.string(),
+  apiStyle: z.string(),
+  confidence: z.string(),
+  signals: z.array(z.string()),
+  endpointCount: z.number().nullable(),
+  detectedAt: z.string(),
+})
+export type RepoApiApproachRecord = z.infer<typeof RepoApiApproachRecordSchema>
+
+export const RepoApiOpParamSchema = z.object({
+  id: z.number(),
+  opId: z.number(),
+  name: z.string(),
+  location: z.string(),
+  type: z.string().nullable(),
+  required: z.boolean().nullable(),
+  description: z.string().nullable(),
+  ordinalPosition: z.number().nullable(),
+})
+export type RepoApiOpParam = z.infer<typeof RepoApiOpParamSchema>
+
+export const RepoApiOpSchema = z.object({
+  id: z.number(),
+  repoId: z.number(),
+  surfaceId: z.number(),
+  httpMethod: z.string().nullable(),
+  path: z.string().nullable(),
+  normalizedPath: z.string().nullable(),
+  operationType: z.string().nullable(),
+  operationName: z.string().nullable(),
+  rpcMethodName: z.string().nullable(),
+  requestType: z.string().nullable(),
+  responseType: z.string().nullable(),
+  rpcStreaming: z.string().nullable(),
+  summary: z.string().nullable(),
+  tags: z.array(z.string()).nullable(),
+  returnType: z.string().nullable(),
+  confidence: z.string(),
+  sourceFile: z.string().nullable(),
+  sourceLine: z.number().nullable(),
+  createdAt: z.string(),
+  params: z.array(RepoApiOpParamSchema).optional(),
+})
+export type RepoApiOp = z.infer<typeof RepoApiOpSchema>
+
+export const RepoApiSurfaceSchema = z.object({
+  id: z.number(),
+  repoId: z.number(),
+  sourceApproachId: z.number().nullable(),
+  name: z.string(),
+  normalizedName: z.string(),
+  apiStyle: z.string(),
+  protocol: z.string().nullable(),
+  basePath: z.string().nullable(),
+  packageOrModule: z.string().nullable(),
+  confidence: z.string(),
+  sourceFile: z.string().nullable(),
+  sourceLine: z.number().nullable(),
+  createdAt: z.string(),
+  opCount: z.number().optional(),
+})
+export type RepoApiSurface = z.infer<typeof RepoApiSurfaceSchema>
 
 // ---- API response wrappers ----
 

@@ -1,11 +1,12 @@
 import { eq, and, ne, count, desc } from 'drizzle-orm'
 import { db } from '../db'
-import { jobs, repositories, repoPackages, repoLanguages, repoEntityApproaches, repoEntities, repoEntityFields, repoEntityRelationships } from '../db/schema'
+import { jobs, repositories, repoPackages, repoLanguages, repoEntityApproaches, repoEntities, repoEntityFields, repoEntityRelationships, repoApiApproaches, repoApiSurfaces, repoApiOps, repoApiOpParams } from '../db/schema'
 import { fetchRepoSummary, fetchOrgRepos } from './github'
 import { cloneOrUpdate, runOrtAnalyze, parseOrtResult, repoDirs } from './ortAnalyzer'
 import { detectLanguages } from './enryAnalyzer'
 import { analyzeEntities } from './entityAnalysis'
 import { toSnakeCase } from './entityAnalysis/normalizer'
+import { analyzeApis } from './apiAnalysis'
 import type { CreateJobInput } from '@inspector-pika/shared'
 
 async function upsertRepository(summary: Awaited<ReturnType<typeof fetchRepoSummary>>) {
@@ -317,6 +318,172 @@ async function runAnalyzeEntities(input: Extract<CreateJobInput, { type: 'analyz
   }
 }
 
+async function runAnalyzeApis(input: Extract<CreateJobInput, { type: 'analyze_apis' }>) {
+  const { source } = repoDirs(input.repo)
+
+  const [repo] = await db.select().from(repositories).where(eq(repositories.id, input.repoId))
+  if (!repo) throw new Error(`Repository ${input.repoId} not found`)
+
+  await cloneOrUpdate(input.repo, source)
+
+  const languages = await db
+    .select()
+    .from(repoLanguages)
+    .where(eq(repoLanguages.repoId, input.repoId))
+    .orderBy(desc(repoLanguages.bytes))
+
+  if (languages.length === 0) {
+    console.warn(`[ApiAnalysis] No language data for repo ${input.repoId}. Run analyze_languages first for best results.`)
+  }
+
+  // Skip if data already exists and not forced
+  if (!input.forceReanalysis) {
+    const existing = await db
+      .select({ id: repoApiApproaches.id })
+      .from(repoApiApproaches)
+      .where(eq(repoApiApproaches.repoId, input.repoId))
+      .limit(1)
+
+    if (existing.length > 0) {
+      const [{ value: endpointCount }] = await db
+        .select({ value: count() })
+        .from(repoApiOps)
+        .where(eq(repoApiOps.repoId, input.repoId))
+      return { skipped: true, reason: 'Data already exists. Set forceReanalysis: true to re-run.', endpointCount }
+    }
+  }
+
+  // Clear previous results (cascades to surfaces → ops → params)
+  if (input.forceReanalysis) {
+    await db.delete(repoApiApproaches).where(eq(repoApiApproaches.repoId, input.repoId))
+  }
+
+  // Run detection + extraction
+  const result = await analyzeApis({
+    repoId: input.repoId,
+    sourceDir: source,
+    repoFullName: input.repo,
+    detectedLanguages: languages,
+    forceReanalysis: input.forceReanalysis,
+  })
+
+  // Persist detected approaches and build a lookup map: "language:approach" → DB row id
+  const approachIdMap = new Map<string, number>()
+  for (const approach of result.approaches) {
+    const [row] = await db
+      .insert(repoApiApproaches)
+      .values({
+        repoId: input.repoId,
+        language: approach.language,
+        approach: approach.approach,
+        apiStyle: approach.apiStyle,
+        confidence: approach.confidence,
+        signals: approach.signals,
+        detectedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [repoApiApproaches.repoId, repoApiApproaches.language, repoApiApproaches.approach],
+        set: {
+          apiStyle: approach.apiStyle,
+          confidence: approach.confidence,
+          signals: approach.signals,
+          detectedAt: new Date(),
+        },
+      })
+      .returning()
+    approachIdMap.set(`${approach.language}:${approach.approach}`, row.id)
+  }
+
+  // Persist surfaces → ops → params
+  let totalOps = 0
+  for (const surface of result.surfaces) {
+    const approachKey = `${result.approaches.find((a) => a.approach === surface.protocol || surface.apiStyle === a.apiStyle)?.language ?? 'cross-language'}:${result.approaches.find((a) => surface.apiStyle === a.apiStyle)?.approach ?? ''}`
+    const sourceApproachId = approachIdMap.get(approachKey) ?? null
+
+    const [surfaceRow] = await db
+      .insert(repoApiSurfaces)
+      .values({
+        repoId: input.repoId,
+        sourceApproachId,
+        name: surface.name,
+        normalizedName: toSnakeCase(surface.name),
+        apiStyle: surface.apiStyle,
+        protocol: surface.protocol ?? null,
+        basePath: surface.basePath ?? null,
+        packageOrModule: surface.packageOrModule ?? null,
+        confidence: 'high',
+        sourceFile: surface.sourceFile,
+        sourceLine: surface.sourceLine ?? null,
+      })
+      .returning()
+
+    for (const op of surface.endpoints) {
+      const normalizedPath = op.path
+        ? op.path.toLowerCase().replace(/\/$/, '') || '/'
+        : null
+
+      const [opRow] = await db
+        .insert(repoApiOps)
+        .values({
+          repoId: input.repoId,
+          surfaceId: surfaceRow.id,
+          httpMethod: op.httpMethod ?? null,
+          path: op.path ?? null,
+          normalizedPath,
+          operationType: op.operationType ?? null,
+          operationName: op.operationName ?? null,
+          rpcMethodName: op.rpcMethodName ?? null,
+          requestType: op.requestType ?? null,
+          responseType: op.responseType ?? null,
+          rpcStreaming: op.rpcStreaming ?? null,
+          summary: op.summary ?? null,
+          tags: op.tags.length > 0 ? op.tags : null,
+          returnType: op.returnType ?? null,
+          confidence: 'high',
+          sourceFile: op.sourceFile,
+          sourceLine: op.sourceLine ?? null,
+        })
+        .returning()
+
+      totalOps++
+
+      for (let i = 0; i < op.parameters.length; i++) {
+        const param = op.parameters[i]
+        await db.insert(repoApiOpParams).values({
+          opId: opRow.id,
+          name: param.name,
+          location: param.location,
+          type: param.type ?? null,
+          required: param.required ?? null,
+          description: param.description ?? null,
+          ordinalPosition: i,
+        })
+      }
+    }
+
+    // Update approach endpoint count
+    if (sourceApproachId) {
+      const [{ value: opCount }] = await db
+        .select({ value: count() })
+        .from(repoApiOps)
+        .where(eq(repoApiOps.surfaceId, surfaceRow.id))
+      await db
+        .update(repoApiApproaches)
+        .set({ endpointCount: opCount })
+        .where(eq(repoApiApproaches.id, sourceApproachId))
+    }
+  }
+
+  return {
+    repo: input.repo,
+    approachesDetected: result.approaches.length,
+    surfacesFound: result.surfaces.length,
+    endpointsFound: totalOps,
+    warnings: result.stats.warnings,
+    totalTimeMs: result.stats.totalTimeMs,
+  }
+}
+
 export async function runJob(jobId: number, input: CreateJobInput): Promise<void> {
   await db
     .update(jobs)
@@ -334,6 +501,8 @@ export async function runJob(jobId: number, input: CreateJobInput): Promise<void
       result = await runAnalyzeLanguages(input)
     } else if (input.type === 'analyze_entities') {
       result = await runAnalyzeEntities(input)
+    } else if (input.type === 'analyze_apis') {
+      result = await runAnalyzeApis(input)
     } else {
       result = await runAnalyzeDependencies(input)
     }

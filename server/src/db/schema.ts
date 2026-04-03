@@ -170,6 +170,85 @@ export const repoEntityRelationships = pgTable('repo_entity_relationships', {
   relUniq: unique('repo_entity_relationships_uniq').on(table.repoId, table.sourceEntityId, table.targetEntityName, table.relationshipType),
 }))
 
+// ---- API analysis tables ----
+
+export const repoApiApproaches = pgTable('repo_api_approaches', {
+  id: serial('id').primaryKey(),
+  repoId: integer('repo_id').references(() => repositories.id, { onDelete: 'cascade' }).notNull(),
+  language: text('language').notNull(),           // "Java", "Python", "cross-language"
+  approach: text('approach').notNull(),           // "spring_mvc", "fastapi", "grpc_proto"
+  apiStyle: text('api_style').notNull(),          // "http" | "graphql" | "rpc"
+  confidence: text('confidence').notNull(),
+  signals: jsonb('signals').notNull().$type<string[]>().default([]),
+  endpointCount: integer('endpoint_count'),
+  detectedAt: timestamp('detected_at').defaultNow().notNull(),
+}, (table) => ({
+  repoIdIdx: index('repo_api_approaches_repo_id_idx').on(table.repoId),
+  repoApproachUniq: unique('repo_api_approaches_uniq').on(table.repoId, table.language, table.approach),
+}))
+
+export const repoApiSurfaces = pgTable('repo_api_surfaces', {
+  id: serial('id').primaryKey(),
+  repoId: integer('repo_id').references(() => repositories.id, { onDelete: 'cascade' }).notNull(),
+  sourceApproachId: integer('source_approach_id').references(() => repoApiApproaches.id, { onDelete: 'set null' }),
+  name: text('name').notNull(),
+  normalizedName: text('normalized_name').notNull(),
+  apiStyle: text('api_style').notNull(),          // "http" | "graphql" | "rpc"
+  protocol: text('protocol'),                     // for rpc: "grpc", "thrift"
+  basePath: text('base_path'),
+  packageOrModule: text('package_or_module'),
+  confidence: text('confidence').notNull(),
+  sourceFile: text('source_file'),
+  sourceLine: integer('source_line'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  repoIdIdx: index('repo_api_surfaces_repo_id_idx').on(table.repoId),
+  styleIdx: index('repo_api_surfaces_style_idx').on(table.repoId, table.apiStyle),
+}))
+
+export const repoApiOps = pgTable('repo_api_ops', {
+  id: serial('id').primaryKey(),
+  repoId: integer('repo_id').references(() => repositories.id, { onDelete: 'cascade' }).notNull(),
+  surfaceId: integer('surface_id').references(() => repoApiSurfaces.id, { onDelete: 'cascade' }).notNull(),
+  // HTTP fields
+  httpMethod: text('http_method'),
+  path: text('path'),
+  normalizedPath: text('normalized_path'),
+  // GraphQL fields
+  operationType: text('operation_type'),
+  operationName: text('operation_name'),
+  // RPC fields
+  rpcMethodName: text('rpc_method_name'),
+  requestType: text('request_type'),
+  responseType: text('response_type'),
+  rpcStreaming: text('rpc_streaming'),
+  // Common
+  summary: text('summary'),
+  tags: jsonb('tags').$type<string[]>(),
+  returnType: text('return_type'),
+  confidence: text('confidence').notNull(),
+  sourceFile: text('source_file'),
+  sourceLine: integer('source_line'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  repoIdIdx: index('repo_api_ops_repo_id_idx').on(table.repoId),
+  surfaceIdx: index('repo_api_ops_surface_id_idx').on(table.surfaceId),
+  httpPathIdx: index('repo_api_ops_http_path_idx').on(table.repoId, table.httpMethod, table.normalizedPath),
+}))
+
+export const repoApiOpParams = pgTable('repo_api_op_params', {
+  id: serial('id').primaryKey(),
+  opId: integer('op_id').references(() => repoApiOps.id, { onDelete: 'cascade' }).notNull(),
+  name: text('name').notNull(),
+  location: text('location').notNull(),           // "path" | "query" | "body" | "header" | "field"
+  type: text('type'),
+  required: boolean('required'),
+  description: text('description'),
+  ordinalPosition: integer('ordinal_position'),
+}, (table) => ({
+  opIdIdx: index('repo_api_op_params_op_id_idx').on(table.opId),
+}))
+
 // ---- Relations ----
 
 export const repositoriesRelations = relations(repositories, ({ many }) => ({
@@ -180,6 +259,8 @@ export const repositoriesRelations = relations(repositories, ({ many }) => ({
   docs: many(repoDocs),
   entityApproaches: many(repoEntityApproaches),
   entities: many(repoEntities),
+  apiApproaches: many(repoApiApproaches),
+  apiSurfaces: many(repoApiSurfaces),
 }))
 
 export const repoLanguagesRelations = relations(repoLanguages, ({ one }) => ({
@@ -227,6 +308,27 @@ export const repoEntityRelationshipsRelations = relations(repoEntityRelationship
   repository: one(repositories, { fields: [repoEntityRelationships.repoId], references: [repositories.id] }),
   sourceEntity: one(repoEntities, { fields: [repoEntityRelationships.sourceEntityId], references: [repoEntities.id], relationName: 'source' }),
   targetEntity: one(repoEntities, { fields: [repoEntityRelationships.targetEntityId], references: [repoEntities.id], relationName: 'target' }),
+}))
+
+export const repoApiApproachesRelations = relations(repoApiApproaches, ({ one, many }) => ({
+  repository: one(repositories, { fields: [repoApiApproaches.repoId], references: [repositories.id] }),
+  surfaces: many(repoApiSurfaces),
+}))
+
+export const repoApiSurfacesRelations = relations(repoApiSurfaces, ({ one, many }) => ({
+  repository: one(repositories, { fields: [repoApiSurfaces.repoId], references: [repositories.id] }),
+  sourceApproach: one(repoApiApproaches, { fields: [repoApiSurfaces.sourceApproachId], references: [repoApiApproaches.id] }),
+  ops: many(repoApiOps),
+}))
+
+export const repoApiOpsRelations = relations(repoApiOps, ({ one, many }) => ({
+  repository: one(repositories, { fields: [repoApiOps.repoId], references: [repositories.id] }),
+  surface: one(repoApiSurfaces, { fields: [repoApiOps.surfaceId], references: [repoApiSurfaces.id] }),
+  params: many(repoApiOpParams),
+}))
+
+export const repoApiOpParamsRelations = relations(repoApiOpParams, ({ one }) => ({
+  op: one(repoApiOps, { fields: [repoApiOpParams.opId], references: [repoApiOps.id] }),
 }))
 
 // Type alias used in JSONB columns above (declared after tables to avoid hoisting issues)
