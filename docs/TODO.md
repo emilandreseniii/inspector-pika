@@ -69,8 +69,8 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 ## Cross-language
 
 ### API Extractors
-- [ ] **OpenAPI / Swagger spec** — parse `openapi.yaml`/`swagger.json`; extract paths, methods, parameters, response schemas; highest fidelity source of truth when present
-- [ ] **GraphQL schema files** — parse `*.graphql`/`*.gql`; extract `type Query`, `type Mutation`, `type Subscription` operations and their arguments
+- [x] **OpenAPI / Swagger spec** — parse `openapi.yaml`/`swagger.json`; extract paths, methods, parameters, response schemas; highest fidelity source of truth when present
+- [x] **GraphQL schema files** — parse `*.graphql`/`*.gql`; extract `type Query`, `type Mutation`, `type Subscription` operations and their arguments
 - [ ] **Thrift** — parse `.thrift` files; extract services, methods, argument/return types (similar shape to proto extractor)
 
 ### Entity Extractors

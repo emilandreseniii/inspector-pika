@@ -4,6 +4,8 @@ import { JaxRsExtractor } from './extractors/languages/java/jaxRs'
 import { SpringGraphqlExtractor } from './extractors/languages/java/springGraphql'
 import { NetflixDgsExtractor } from './extractors/languages/java/netflixDgs'
 import { GrpcProtoExtractor } from './extractors/shared/grpcProto'
+import { OpenApiSpecExtractor } from './extractors/shared/openApiSpec'
+import { GraphQLSchemaExtractor } from './extractors/shared/graphqlSchema'
 import { GrpcJavaStubExtractor } from './extractors/languages/java/grpcJavaStub'
 import { FastApiExtractor } from './extractors/languages/python/fastapi'
 import { FlaskExtractor } from './extractors/languages/python/flask'
@@ -60,7 +62,9 @@ register('Go', 'fiber',    FiberExtractor)
 register('Go', 'net_http', NetHttpExtractor)
 
 // ── Cross-language ────────────────────────────────────────────────────────────
-register('cross-language', 'grpc_proto', GrpcProtoExtractor)
+register('cross-language', 'grpc_proto',      GrpcProtoExtractor)
+register('cross-language', 'openapi_spec',    OpenApiSpecExtractor)
+register('cross-language', 'graphql_schema',  GraphQLSchemaExtractor)
 
 // ── Future extractors (not yet implemented) ───────────────────────────────────
 // Java
