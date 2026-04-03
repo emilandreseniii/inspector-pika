@@ -101,7 +101,20 @@ export function repoDirs(repo: string) {
   }
 }
 
+// Per-repo lock: prevents concurrent clone/pull for the same repo
+const repoLocks = new Map<string, Promise<void>>()
+
 export async function cloneOrUpdate(repo: string, sourceDir: string): Promise<void> {
+  // Wait for any in-progress clone/pull of the same repo to finish before starting
+  const pending = repoLocks.get(repo)
+  if (pending) await pending.catch(() => { /* ignore errors from previous attempt */ })
+
+  const operation = _doCloneOrUpdate(repo, sourceDir)
+  repoLocks.set(repo, operation.then(() => { repoLocks.delete(repo) }, () => { repoLocks.delete(repo) }))
+  await operation
+}
+
+async function _doCloneOrUpdate(repo: string, sourceDir: string): Promise<void> {
   const cloneUrl = `https://github.com/${repo}.git`
 
   try {

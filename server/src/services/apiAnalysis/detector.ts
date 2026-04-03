@@ -315,6 +315,14 @@ async function detectJsApiApproaches(sourceDir: string): Promise<DetectedApiAppr
     approaches.push({ language: 'TypeScript', approach: 'hono', apiStyle: 'http', confidence: scoreConfidence(honoSignals), signals: honoSignals })
   }
 
+  // ── gRPC-node / @grpc/grpc-js ────────────────────────────────────────────
+  const grpcNodeSignals: string[] = []
+  if (/["']@grpc\/grpc-js["']|["']grpc["']/i.test(pkgContent)) {
+    grpcNodeSignals.push('Tier A: @grpc/grpc-js or grpc found in package.json')
+    // Defer to proto extractor for schema — just register the approach
+    approaches.push({ language: 'cross-language', approach: 'grpc_proto', apiStyle: 'rpc', confidence: 'high', signals: grpcNodeSignals })
+  }
+
   // ── Apollo Server ─────────────────────────────────────────────────────────
   const apolloSignals: string[] = []
   if (/["']@apollo\/server["']|["']apollo-server["']|["']apollo-server-express["']/i.test(pkgContent)) {
@@ -381,6 +389,16 @@ async function detectGoApiApproaches(sourceDir: string): Promise<DetectedApiAppr
     approaches.push({ language: 'Go', approach: 'fiber', apiStyle: 'http', confidence: scoreConfidence(fiberSignals), signals: fiberSignals })
   }
 
+  // ── gqlgen (GraphQL) ────────────────────────────────────────────────────────
+  if (/99designs\/gqlgen/.test(goModContent)) {
+    approaches.push({ language: 'cross-language', approach: 'graphql_schema', apiStyle: 'graphql', confidence: 'high', signals: ['Tier A: 99designs/gqlgen found in go.mod'] })
+  }
+
+  // ── gRPC-Go — defer to proto extractor ────────────────────────────────────
+  if (/google\.golang\.org\/grpc/.test(goModContent)) {
+    approaches.push({ language: 'cross-language', approach: 'grpc_proto', apiStyle: 'rpc', confidence: 'high', signals: ['Tier A: google.golang.org/grpc found in go.mod'] })
+  }
+
   return approaches
 }
 
@@ -420,6 +438,12 @@ async function detectCsharpApiApproaches(sourceDir: string): Promise<DetectedApi
     const routeHits = await grepFirst(sourceDir, '**/*.cs', /\[Http(?:Get|Post|Put|Delete|Patch)\]/, 5)
     if (routeHits.length > 0) signals.push('Tier C: [HttpGet/Post/…] verb attributes found')
     approaches.push({ language: 'C#', approach: 'aspnet_core', apiStyle: 'http', confidence: 'high', signals })
+  }
+
+  // Hot Chocolate / GraphQL.NET — detect GraphQL resolver patterns, route to graphql_schema
+  const hotChocolateHits = await grepFirst(sourceDir, '**/*.cs', /\[QueryType\]|\[MutationType\]|\[ExtendObjectType\]|IQueryResolver/, 3)
+  if (hotChocolateHits.length > 0) {
+    approaches.push({ language: 'cross-language', approach: 'graphql_schema', apiStyle: 'graphql', confidence: 'high', signals: [`Tier C: Hot Chocolate/GraphQL.NET resolver pattern found in ${hotChocolateHits[0]}`] })
   }
 
   return approaches
@@ -478,6 +502,11 @@ async function detectRustApiApproaches(sourceDir: string): Promise<DetectedApiAp
     if (actixHits.length > 0) {
       approaches.push({ language: 'Rust', approach: 'actix_web', apiStyle: 'http', confidence: 'medium', signals: [`Tier C: actix-web patterns found in ${actixHits[0]}`] })
     }
+  }
+
+  // tonic (gRPC-Rust) — defer to proto extractor for schema
+  if (/\btonic\b/.test(cargoContent)) {
+    approaches.push({ language: 'cross-language', approach: 'grpc_proto', apiStyle: 'rpc', confidence: 'high', signals: ['Tier A: tonic found in Cargo.toml'] })
   }
 
   return approaches

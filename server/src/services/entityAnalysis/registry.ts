@@ -18,6 +18,7 @@ import { SqlcExtractor } from './extractors/languages/go/sqlc'
 import { ActiveRecordExtractor } from './extractors/languages/ruby/activeRecord'
 import { SequelExtractor as SequelRubyExtractor } from './extractors/languages/ruby/sequel'
 import { EfCoreExtractor } from './extractors/languages/csharp/efCore'
+import { DapperExtractor } from './extractors/languages/csharp/dapper'
 import { DieselExtractor } from './extractors/languages/rust/diesel'
 import { SeaOrmExtractor } from './extractors/languages/rust/seaOrm'
 import { SqlxExtractor } from './extractors/languages/rust/sqlx'
@@ -75,6 +76,7 @@ register('Ruby', 'sequel',        SequelRubyExtractor)
 
 // ---- C# ----
 register('C#', 'ef_core', EfCoreExtractor)
+register('C#', 'dapper',  DapperExtractor)
 
 // ---- Go ----
 register('Go', 'gorm', GormExtractor)

@@ -36,8 +36,8 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 - [x] **NestJS** — detect `@Controller`, `@Get`, `@Post`, `@Body`, `@Param`, `@Query`; similar shape to Spring MVC
 - [x] **Fastify** — detect `fastify.get/post/…`, `fastify.route()`
 - [x] **Hono** — detect `app.get/post/…` with Hono-style routing
-- [ ] **Apollo Server / TypeGraphQL / Pothos** — detect GraphQL resolvers and schema definitions
-- [ ] **gRPC-node / @grpc/grpc-js** — detect service implementations; defer to proto extractor for schema
+- [x] **Apollo Server / TypeGraphQL / Pothos** — detect GraphQL resolvers and schema definitions
+- [x] **gRPC-node / @grpc/grpc-js** — detect service implementations; defer to proto extractor for schema
 
 ### Entity Extractors
 - [x] **Prisma** — parse `schema.prisma`: `model`, `@@map`, field types and attributes
@@ -56,8 +56,8 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 - [x] **Echo** — detect `e.GET/POST/…`, `g.GET/POST/…` group patterns
 - [x] **Chi** — detect `r.Get/Post/…`, `chi.NewRouter`
 - [x] **Fiber** — detect `app.Get/Post/…`
-- [ ] **gqlgen** — detect resolver implementations from generated `ResolverRoot` interface
-- [ ] **gRPC-Go** — detect service server implementations; defer to proto extractor for schema
+- [x] **gqlgen** — detect resolver implementations from generated `ResolverRoot` interface
+- [x] **gRPC-Go** — detect service server implementations; defer to proto extractor for schema
 
 ### Entity Extractors
 - [x] **GORM** — detect `gorm.Model` embedding, struct tags `gorm:"column:…"`, `AutoMigrate` calls
@@ -94,11 +94,11 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 
 ### API Extractors
 - [x] **ASP.NET Core** — detect `[ApiController]`, `[HttpGet]`, `[HttpPost]`, `[Route]`; similar shape to Spring MVC extractor
-- [ ] **Hot Chocolate / GraphQL.NET** — detect GraphQL resolver class patterns
+- [x] **Hot Chocolate / GraphQL.NET** — detect GraphQL resolver class patterns
 
 ### Entity Extractors
 - [x] **EF Core** — detect `DbContext`, `DbSet<T>`, `[Table]`, `[Column]`, `OnModelCreating` fluent API
-- [ ] **Dapper** — detect `Query<T>`, `Execute` calls; extract DTO types used as results
+- [x] **Dapper** — detect `Query<T>`, `Execute` calls; extract DTO types used as results
 
 ---
 
@@ -107,7 +107,7 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 ### API Extractors
 - [x] **Axum** — detect `Router::new().route(…)`, handler function signatures with `axum::extract::*`
 - [x] **Actix-web** — detect `web::get().to(…)`, `#[get("…")]`, `App::new().service(…)`
-- [ ] **tonic** — detect gRPC service trait implementations; defer to proto extractor for schema
+- [x] **tonic** — detect gRPC service trait implementations; defer to proto extractor for schema
 
 ### Entity Extractors
 - [x] **Diesel** — parse `diesel::table!` macros and `schema.rs`; extract table and column definitions
@@ -130,8 +130,8 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 
 ## Infrastructure / Quality
 
-- [ ] **Concurrent clone locking** — git 128 errors occur when multiple analysis jobs clone the same repo simultaneously; add a per-repo lock so only one job clones/pulls at a time
-- [ ] **Rebuild shared dist automatically** — the shared package dist must be manually rebuilt (`npm run build`) before new job types become available to the server; wire this into the dev workflow
+- [x] **Concurrent clone locking** — git 128 errors occur when multiple analysis jobs clone the same repo simultaneously; add a per-repo lock so only one job clones/pulls at a time
+- [x] **Rebuild shared dist automatically** — the shared package dist must be manually rebuilt (`npm run build`) before new job types become available to the server; wire this into the dev workflow
 - [x] **Python API detection signals** — add Tier A/B/C signals for FastAPI, Flask, Django REST to `apiAnalysis/detector.ts` so they appear in `api-approaches` before the extractor is built
 - [x] **TypeScript/JavaScript API detection signals** — add signals for Express, NestJS, Fastify, Apollo to `apiAnalysis/detector.ts`
 - [x] **Go API/entity detection signals** — add signals for Gin, Echo, GORM, Ent, sqlc to both detectors

@@ -8,11 +8,11 @@
     "client"
   ],
   "scripts": {
-    "start": "node scripts/setup.js && npm run db:migrate && npm run dev",
+    "start": "node scripts/setup.js && npm run build --workspace=shared && npm run db:migrate && npm run dev",
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "test:unit": "npm run test --workspace=server",
-    "dev": "concurrently \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",
+    "dev": "concurrently \"npm run dev --workspace=shared\" \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",
     "dev:server": "npm run dev --workspace=server",
     "dev:client": "npm run dev --workspace=client",
     "build": "npm run build --workspaces --if-present",
