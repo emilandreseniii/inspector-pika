@@ -12,7 +12,7 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 - [x] **gRPC (generated Java stubs)** — detect server implementations that extend `*Grpc.ImplBase`; complements the proto-file extractor
 
 ### Entity Extractors
-- [ ] **Spring Data JDBC** — detect `@Table`, `@Column`, `@MappedCollection`; detector signal exists, no extractor
+- [x] **Spring Data JDBC** — detect `@Table`, `@Column`, `@MappedCollection`; detector signal exists, no extractor
 
 ---
 

@@ -2,6 +2,7 @@ import { BaseExtractor, ExtractorContext } from './extractors/base'
 import { JpaExtractor } from './extractors/languages/java/jpa'
 import { MybatisExtractor } from './extractors/languages/java/mybatis'
 import { JooqExtractor } from './extractors/languages/java/jooq'
+import { SpringDataJdbcExtractor } from './extractors/languages/java/springDataJdbc'
 import { SqlAlchemyExtractor } from './extractors/languages/python/sqlalchemy'
 import { DjangoExtractor } from './extractors/languages/python/django'
 import { SqlDdlExtractor } from './extractors/shared/sqlDdlExtractor'
@@ -20,6 +21,8 @@ register('Java',   'jpa_hibernate',     JpaExtractor)
 register('Kotlin', 'jpa_hibernate',     JpaExtractor)   // same annotations
 register('Java',   'mybatis',           MybatisExtractor)
 register('Java',   'jooq',              JooqExtractor)
+register('Java',   'spring_data_jdbc', SpringDataJdbcExtractor)
+register('Kotlin', 'spring_data_jdbc', SpringDataJdbcExtractor)
 
 // ---- Cross-language ----
 register('cross-language', 'sql_ddl',           SqlDdlExtractor)
