@@ -24,8 +24,8 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 - [x] **Django REST Framework** — detect `ViewSet`, `APIView`, `@action`, routers; extract serializer types as request/response
 
 ### Entity Extractors
-- [ ] **Tortoise ORM** — detect `class Foo(Model)`, `fields.*Field`
-- [ ] **Peewee** — detect `class Foo(Model)`, `*Field` column definitions
+- [x] **Tortoise ORM** — detect `class Foo(Model)`, `fields.*Field`
+- [x] **Peewee** — detect `class Foo(Model)`, `*Field` column definitions
 
 ---
 

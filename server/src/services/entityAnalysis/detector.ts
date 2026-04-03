@@ -175,6 +175,24 @@ async function detectPythonApproaches(sourceDir: string): Promise<DetectedApproa
     approaches.push({ language: 'Python', approach: 'sqlalchemy', confidence: computeConfidence(sqlaSignals), signals: sqlaSignals })
   }
 
+  // Tortoise ORM
+  const tortoiseSignals: string[] = []
+  if (/tortoise-orm|tortoise_orm/i.test(reqContent)) tortoiseSignals.push("Tier A: tortoise-orm found in requirements")
+  const tortoiseCount = await grepDir(sourceDir, '**/*.py', /from\s+tortoise|import\s+tortoise/, 10)
+  if (tortoiseCount > 0) tortoiseSignals.push(`Tier B: tortoise import found in ${tortoiseCount} file(s)`)
+  if (tortoiseSignals.length > 0) {
+    approaches.push({ language: 'Python', approach: 'tortoise_orm', confidence: computeConfidence(tortoiseSignals), signals: tortoiseSignals })
+  }
+
+  // Peewee
+  const peeweeSignals: string[] = []
+  if (/peewee/i.test(reqContent)) peeweeSignals.push("Tier A: peewee found in requirements")
+  const peeweeCount = await grepDir(sourceDir, '**/*.py', /from\s+peewee|import\s+peewee/, 10)
+  if (peeweeCount > 0) peeweeSignals.push(`Tier B: peewee import found in ${peeweeCount} file(s)`)
+  if (peeweeSignals.length > 0) {
+    approaches.push({ language: 'Python', approach: 'peewee', confidence: computeConfidence(peeweeSignals), signals: peeweeSignals })
+  }
+
   return approaches
 }
 

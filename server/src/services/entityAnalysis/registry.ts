@@ -5,6 +5,8 @@ import { JooqExtractor } from './extractors/languages/java/jooq'
 import { SpringDataJdbcExtractor } from './extractors/languages/java/springDataJdbc'
 import { SqlAlchemyExtractor } from './extractors/languages/python/sqlalchemy'
 import { DjangoExtractor } from './extractors/languages/python/django'
+import { TortoiseOrmExtractor } from './extractors/languages/python/tortoiseOrm'
+import { PeeweeExtractor } from './extractors/languages/python/peewee'
 import { SqlDdlExtractor } from './extractors/shared/sqlDdlExtractor'
 import { MigrationFileExtractor } from './extractors/shared/migrationFileExtractor'
 
@@ -34,8 +36,10 @@ register('cross-language', 'migration_files',   MigrationFileExtractor)
 // the registry won't emit "no extractor registered" warnings.
 
 // ---- Python ----
-register('Python', 'sqlalchemy',  SqlAlchemyExtractor)
-register('Python', 'django_orm',  DjangoExtractor)
+register('Python', 'sqlalchemy',    SqlAlchemyExtractor)
+register('Python', 'django_orm',    DjangoExtractor)
+register('Python', 'tortoise_orm',  TortoiseOrmExtractor)
+register('Python', 'peewee',        PeeweeExtractor)
 
 // JavaScript / TypeScript
 // register('TypeScript', 'prisma',     PrismaExtractor)
