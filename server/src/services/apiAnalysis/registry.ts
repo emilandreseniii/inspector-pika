@@ -5,6 +5,9 @@ import { SpringGraphqlExtractor } from './extractors/languages/java/springGraphq
 import { NetflixDgsExtractor } from './extractors/languages/java/netflixDgs'
 import { GrpcProtoExtractor } from './extractors/shared/grpcProto'
 import { GrpcJavaStubExtractor } from './extractors/languages/java/grpcJavaStub'
+import { FastApiExtractor } from './extractors/languages/python/fastapi'
+import { FlaskExtractor } from './extractors/languages/python/flask'
+import { DjangoRestFrameworkExtractor } from './extractors/languages/python/djangoRestFramework'
 
 type ApiExtractorClass = new (ctx: ApiExtractorContext) => BaseApiExtractor
 
@@ -25,6 +28,11 @@ register('Java',   'netflix_dgs',   NetflixDgsExtractor)
 register('Kotlin', 'netflix_dgs',   NetflixDgsExtractor)
 register('Java',   'grpc_java_stub', GrpcJavaStubExtractor)
 register('Kotlin', 'grpc_java_stub', GrpcJavaStubExtractor)
+
+// ── Python ────────────────────────────────────────────────────────────────────
+register('Python', 'fastapi',                FastApiExtractor)
+register('Python', 'flask',                  FlaskExtractor)
+register('Python', 'django_rest_framework',  DjangoRestFrameworkExtractor)
 
 // ── Cross-language ────────────────────────────────────────────────────────────
 register('cross-language', 'grpc_proto', GrpcProtoExtractor)

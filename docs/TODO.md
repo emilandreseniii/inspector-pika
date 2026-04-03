@@ -19,9 +19,9 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 ## Python
 
 ### API Extractors
-- [ ] **FastAPI** — detect `@app.get/post/put/delete/patch`, `APIRouter`, extract path params, query params, Pydantic body types
-- [ ] **Flask** — detect `@app.route`, `@blueprint.route`, extract URL rules and methods from `add_url_rule`
-- [ ] **Django REST Framework** — detect `ViewSet`, `APIView`, `@action`, routers; extract serializer types as request/response
+- [x] **FastAPI** — detect `@app.get/post/put/delete/patch`, `APIRouter`, extract path params, query params, Pydantic body types
+- [x] **Flask** — detect `@app.route`, `@blueprint.route`, extract URL rules and methods from `add_url_rule`
+- [x] **Django REST Framework** — detect `ViewSet`, `APIView`, `@action`, routers; extract serializer types as request/response
 
 ### Entity Extractors
 - [ ] **Tortoise ORM** — detect `class Foo(Model)`, `fields.*Field`
@@ -132,6 +132,6 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 
 - [ ] **Concurrent clone locking** — git 128 errors occur when multiple analysis jobs clone the same repo simultaneously; add a per-repo lock so only one job clones/pulls at a time
 - [ ] **Rebuild shared dist automatically** — the shared package dist must be manually rebuilt (`npm run build`) before new job types become available to the server; wire this into the dev workflow
-- [ ] **Python API detection signals** — add Tier A/B/C signals for FastAPI, Flask, Django REST to `apiAnalysis/detector.ts` so they appear in `api-approaches` before the extractor is built
+- [x] **Python API detection signals** — add Tier A/B/C signals for FastAPI, Flask, Django REST to `apiAnalysis/detector.ts` so they appear in `api-approaches` before the extractor is built
 - [ ] **TypeScript/JavaScript API detection signals** — add signals for Express, NestJS, Fastify, Apollo to `apiAnalysis/detector.ts`
 - [ ] **Go API/entity detection signals** — add signals for Gin, Echo, GORM, Ent, sqlc to both detectors

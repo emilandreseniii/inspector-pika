@@ -29,6 +29,10 @@ export async function detectApiApproaches(
     detectorPromises.push(detectJavaApiApproaches(sourceDir))
   }
 
+  if (detectedLanguages.has('Python')) {
+    detectorPromises.push(detectPythonApiApproaches(sourceDir))
+  }
+
   const results = await Promise.allSettled(detectorPromises)
   for (const result of results) {
     if (result.status === 'fulfilled') approaches.push(...result.value)
@@ -170,6 +174,73 @@ async function detectJavaApiApproaches(sourceDir: string): Promise<DetectedApiAp
   // is handled by the cross-language grpc_proto detector/extractor.
   // We add a Java-specific signal set but only if grpc_proto is NOT already detected
   // (to avoid duplicate surfaces). We skip this and let grpc_proto cover it.
+
+  return approaches
+}
+
+// ── Python API detector ──────────────────────────────────────────────────────
+
+async function detectPythonApiApproaches(sourceDir: string): Promise<DetectedApiApproach[]> {
+  const approaches: DetectedApiApproach[] = []
+
+  // Read common Python dependency files for Tier A signals
+  const [reqContent, pyprojectContent, setupContent] = await Promise.all([
+    readSafe(join(sourceDir, 'requirements.txt')),
+    readSafe(join(sourceDir, 'pyproject.toml')),
+    readSafe(join(sourceDir, 'setup.py')),
+  ])
+  const depContent = (reqContent ?? '') + (pyprojectContent ?? '') + (setupContent ?? '')
+
+  // ── FastAPI ──────────────────────────────────────────────────────────────
+  const fastapiSignals: string[] = []
+
+  if (/\bfastapi\b/i.test(depContent)) {
+    fastapiSignals.push('Tier A: fastapi dependency found')
+  }
+
+  const fastapiHits = await grepFirst(sourceDir, '**/*.py', /from\s+fastapi\s+import|FastAPI\s*\(/, 3)
+  if (fastapiHits.length > 0) {
+    fastapiSignals.push(`Tier C: FastAPI usage found in ${fastapiHits[0]}`)
+  }
+
+  if (fastapiSignals.length > 0) {
+    approaches.push({ language: 'Python', approach: 'fastapi', apiStyle: 'http', confidence: scoreConfidence(fastapiSignals), signals: fastapiSignals })
+  }
+
+  // ── Flask ────────────────────────────────────────────────────────────────
+  const flaskSignals: string[] = []
+
+  if (/\bflask\b/i.test(depContent)) {
+    flaskSignals.push('Tier A: flask dependency found')
+  }
+
+  const flaskAppFiles = await globCount(sourceDir, '**/app.py') + await globCount(sourceDir, '**/application.py')
+  if (flaskAppFiles > 0) flaskSignals.push(`Tier B: ${flaskAppFiles} app.py/application.py file(s) found`)
+
+  const flaskHits = await grepFirst(sourceDir, '**/*.py', /from\s+flask\s+import|Flask\s*\(__name__\)/, 3)
+  if (flaskHits.length > 0) {
+    flaskSignals.push(`Tier C: Flask usage found in ${flaskHits[0]}`)
+  }
+
+  if (flaskSignals.length > 0) {
+    approaches.push({ language: 'Python', approach: 'flask', apiStyle: 'http', confidence: scoreConfidence(flaskSignals), signals: flaskSignals })
+  }
+
+  // ── Django REST Framework ────────────────────────────────────────────────
+  const drfSignals: string[] = []
+
+  if (/djangorestframework|rest_framework/i.test(depContent)) {
+    drfSignals.push('Tier A: djangorestframework dependency found')
+  }
+
+  const drfHits = await grepFirst(sourceDir, '**/*.py', /from\s+rest_framework|ModelViewSet|APIView/, 3)
+  if (drfHits.length > 0) {
+    drfSignals.push(`Tier C: DRF usage found in ${drfHits[0]}`)
+  }
+
+  if (drfSignals.length > 0) {
+    approaches.push({ language: 'Python', approach: 'django_rest_framework', apiStyle: 'http', confidence: scoreConfidence(drfSignals), signals: drfSignals })
+  }
 
   return approaches
 }
