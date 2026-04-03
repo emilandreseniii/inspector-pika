@@ -45,6 +45,18 @@ export async function detectApiApproaches(
     detectorPromises.push(detectRubyApiApproaches(sourceDir))
   }
 
+  if (detectedLanguages.has('C#')) {
+    detectorPromises.push(detectCsharpApiApproaches(sourceDir))
+  }
+
+  if (detectedLanguages.has('Rust')) {
+    detectorPromises.push(detectRustApiApproaches(sourceDir))
+  }
+
+  if (detectedLanguages.has('PHP')) {
+    detectorPromises.push(detectPhpApiApproaches(sourceDir))
+  }
+
   const results = await Promise.allSettled(detectorPromises)
   for (const result of results) {
     if (result.status === 'fulfilled') approaches.push(...result.value)
@@ -379,6 +391,81 @@ async function detectRubyApiApproaches(sourceDir: string): Promise<DetectedApiAp
   if (grapeHits.length > 0) {
     const signals: string[] = [`Tier C: Grape::API subclass found in ${grapeHits[0]}`]
     approaches.push({ language: 'Ruby', approach: 'grape', apiStyle: 'http', confidence: 'high', signals })
+  }
+
+  return approaches
+}
+
+// ── C# API detector ───────────────────────────────────────────────────────────
+
+async function detectCsharpApiApproaches(sourceDir: string): Promise<DetectedApiApproach[]> {
+  const approaches: DetectedApiApproach[] = []
+
+  // ASP.NET Core — [ApiController] attribute
+  const apiControllerHits = await grepFirst(sourceDir, '**/*.cs', /\[ApiController\]/, 5)
+  if (apiControllerHits.length > 0) {
+    const signals = [`Tier C: [ApiController] found in ${apiControllerHits[0]}`]
+    const routeHits = await grepFirst(sourceDir, '**/*.cs', /\[Http(?:Get|Post|Put|Delete|Patch)\]/, 5)
+    if (routeHits.length > 0) signals.push('Tier C: [HttpGet/Post/…] verb attributes found')
+    approaches.push({ language: 'C#', approach: 'aspnet_core', apiStyle: 'http', confidence: 'high', signals })
+  }
+
+  return approaches
+}
+
+// ── PHP API detector ──────────────────────────────────────────────────────────
+
+async function detectPhpApiApproaches(sourceDir: string): Promise<DetectedApiApproach[]> {
+  const approaches: DetectedApiApproach[] = []
+  const composerContent = await readSafe(join(sourceDir, 'composer.json')) ?? ''
+
+  // Laravel
+  if (/laravel\/framework/i.test(composerContent)) {
+    approaches.push({ language: 'PHP', approach: 'laravel', apiStyle: 'http', confidence: 'high', signals: ['Tier A: laravel/framework found in composer.json'] })
+  } else {
+    const routeFiles = await globCount(sourceDir, '**/routes/*.php')
+    if (routeFiles > 0) {
+      approaches.push({ language: 'PHP', approach: 'laravel', apiStyle: 'http', confidence: 'medium', signals: [`Tier B: ${routeFiles} routes/*.php file(s) found`] })
+    }
+  }
+
+  // Symfony
+  if (/symfony\/framework-bundle/i.test(composerContent)) {
+    approaches.push({ language: 'PHP', approach: 'symfony', apiStyle: 'http', confidence: 'high', signals: ['Tier A: symfony/framework-bundle found in composer.json'] })
+  } else {
+    const routeHits = await grepFirst(sourceDir, '**/*.php', /#\[Route\s*\(|@Route\s*\(/, 3)
+    if (routeHits.length > 0) {
+      approaches.push({ language: 'PHP', approach: 'symfony', apiStyle: 'http', confidence: 'medium', signals: [`Tier C: #[Route] attribute found in ${routeHits[0]}`] })
+    }
+  }
+
+  return approaches
+}
+
+// ── Rust API detector ─────────────────────────────────────────────────────────
+
+async function detectRustApiApproaches(sourceDir: string): Promise<DetectedApiApproach[]> {
+  const approaches: DetectedApiApproach[] = []
+  const cargoContent = await readSafe(join(sourceDir, 'Cargo.toml')) ?? ''
+
+  // Axum
+  if (/\baxum\b/.test(cargoContent)) {
+    approaches.push({ language: 'Rust', approach: 'axum', apiStyle: 'http', confidence: 'high', signals: ['Tier A: axum found in Cargo.toml'] })
+  } else {
+    const axumHits = await grepFirst(sourceDir, '**/*.rs', /axum::routing|Router::new/, 3)
+    if (axumHits.length > 0) {
+      approaches.push({ language: 'Rust', approach: 'axum', apiStyle: 'http', confidence: 'medium', signals: [`Tier C: axum routing found in ${axumHits[0]}`] })
+    }
+  }
+
+  // Actix-web
+  if (/\bactix-web\b/.test(cargoContent)) {
+    approaches.push({ language: 'Rust', approach: 'actix_web', apiStyle: 'http', confidence: 'high', signals: ['Tier A: actix-web found in Cargo.toml'] })
+  } else {
+    const actixHits = await grepFirst(sourceDir, '**/*.rs', /#\[(?:get|post|put|delete)\s*\(|HttpServer::new/, 3)
+    if (actixHits.length > 0) {
+      approaches.push({ language: 'Rust', approach: 'actix_web', apiStyle: 'http', confidence: 'medium', signals: [`Tier C: actix-web patterns found in ${actixHits[0]}`] })
+    }
   }
 
   return approaches

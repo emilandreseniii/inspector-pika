@@ -17,6 +17,12 @@ import { EntExtractor } from './extractors/languages/go/ent'
 import { SqlcExtractor } from './extractors/languages/go/sqlc'
 import { ActiveRecordExtractor } from './extractors/languages/ruby/activeRecord'
 import { SequelExtractor as SequelRubyExtractor } from './extractors/languages/ruby/sequel'
+import { EfCoreExtractor } from './extractors/languages/csharp/efCore'
+import { DieselExtractor } from './extractors/languages/rust/diesel'
+import { SeaOrmExtractor } from './extractors/languages/rust/seaOrm'
+import { SqlxExtractor } from './extractors/languages/rust/sqlx'
+import { EloquentExtractor } from './extractors/languages/php/eloquent'
+import { DoctrineExtractor } from './extractors/languages/php/doctrine'
 import { SqlDdlExtractor } from './extractors/shared/sqlDdlExtractor'
 import { MigrationFileExtractor } from './extractors/shared/migrationFileExtractor'
 
@@ -65,19 +71,22 @@ register('JavaScript', 'mongoose',    MongooseExtractor)
 register('Ruby', 'active_record', ActiveRecordExtractor)
 register('Ruby', 'sequel',        SequelRubyExtractor)
 
-// C#
-// register('C#', 'ef_core',           EfCoreExtractor)
+// ---- C# ----
+register('C#', 'ef_core', EfCoreExtractor)
 
 // ---- Go ----
 register('Go', 'gorm', GormExtractor)
 register('Go', 'ent',  EntExtractor)
 register('Go', 'sqlc', SqlcExtractor)
 
-// Rust
-// register('Rust', 'diesel',          DieselExtractor)
+// ---- Rust ----
+register('Rust', 'diesel',  DieselExtractor)
+register('Rust', 'sea_orm', SeaOrmExtractor)
+register('Rust', 'sqlx',    SqlxExtractor)
 
-// PHP
-// register('PHP', 'eloquent',         EloquentExtractor)
+// ---- PHP ----
+register('PHP', 'eloquent', EloquentExtractor)
+register('PHP', 'doctrine', DoctrineExtractor)
 
 export function getExtractor(
   language: string,

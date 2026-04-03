@@ -21,6 +21,11 @@ import { FiberExtractor } from './extractors/languages/go/fiber'
 import { NetHttpExtractor } from './extractors/languages/go/netHttp'
 import { RailsRoutesExtractor } from './extractors/languages/ruby/railsRoutes'
 import { GrapeExtractor } from './extractors/languages/ruby/grape'
+import { AspNetCoreExtractor } from './extractors/languages/csharp/aspNetCore'
+import { AxumExtractor } from './extractors/languages/rust/axum'
+import { ActixWebExtractor } from './extractors/languages/rust/actixWeb'
+import { LaravelExtractor } from './extractors/languages/php/laravel'
+import { SymfonyExtractor } from './extractors/languages/php/symfony'
 
 type ApiExtractorClass = new (ctx: ApiExtractorContext) => BaseApiExtractor
 
@@ -66,6 +71,17 @@ register('Go', 'net_http', NetHttpExtractor)
 // ── Ruby ──────────────────────────────────────────────────────────────────────
 register('Ruby', 'rails_routes', RailsRoutesExtractor)
 register('Ruby', 'grape',        GrapeExtractor)
+
+// ── C# ────────────────────────────────────────────────────────────────────────
+register('C#', 'aspnet_core', AspNetCoreExtractor)
+
+// ── Rust ──────────────────────────────────────────────────────────────────────
+register('Rust', 'axum',      AxumExtractor)
+register('Rust', 'actix_web', ActixWebExtractor)
+
+// ── PHP ───────────────────────────────────────────────────────────────────────
+register('PHP', 'laravel', LaravelExtractor)
+register('PHP', 'symfony', SymfonyExtractor)
 
 // ── Cross-language ────────────────────────────────────────────────────────────
 register('cross-language', 'grpc_proto',      GrpcProtoExtractor)

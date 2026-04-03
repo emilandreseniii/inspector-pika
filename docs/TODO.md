@@ -93,11 +93,11 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 ## C#
 
 ### API Extractors
-- [ ] **ASP.NET Core** — detect `[ApiController]`, `[HttpGet]`, `[HttpPost]`, `[Route]`; similar shape to Spring MVC extractor
+- [x] **ASP.NET Core** — detect `[ApiController]`, `[HttpGet]`, `[HttpPost]`, `[Route]`; similar shape to Spring MVC extractor
 - [ ] **Hot Chocolate / GraphQL.NET** — detect GraphQL resolver class patterns
 
 ### Entity Extractors
-- [ ] **EF Core** — detect `DbContext`, `DbSet<T>`, `[Table]`, `[Column]`, `OnModelCreating` fluent API
+- [x] **EF Core** — detect `DbContext`, `DbSet<T>`, `[Table]`, `[Column]`, `OnModelCreating` fluent API
 - [ ] **Dapper** — detect `Query<T>`, `Execute` calls; extract DTO types used as results
 
 ---
@@ -105,26 +105,26 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 ## Rust
 
 ### API Extractors
-- [ ] **Axum** — detect `Router::new().route(…)`, handler function signatures with `axum::extract::*`
-- [ ] **Actix-web** — detect `web::get().to(…)`, `#[get("…")]`, `App::new().service(…)`
+- [x] **Axum** — detect `Router::new().route(…)`, handler function signatures with `axum::extract::*`
+- [x] **Actix-web** — detect `web::get().to(…)`, `#[get("…")]`, `App::new().service(…)`
 - [ ] **tonic** — detect gRPC service trait implementations; defer to proto extractor for schema
 
 ### Entity Extractors
-- [ ] **Diesel** — parse `diesel::table!` macros and `schema.rs`; extract table and column definitions
-- [ ] **SeaORM** — detect `DeriveEntityModel`, `ColumnTrait` enums
-- [ ] **sqlx** — detect `query_as!`, `query!` macros; extract result struct types
+- [x] **Diesel** — parse `diesel::table!` macros and `schema.rs`; extract table and column definitions
+- [x] **SeaORM** — detect `DeriveEntityModel`, `ColumnTrait` enums
+- [x] **sqlx** — detect `query_as!`, `query!` macros; extract result struct types
 
 ---
 
 ## PHP
 
 ### API Extractors
-- [ ] **Laravel** — parse `routes/api.php`; extract `Route::get/post/…`, resource controllers
-- [ ] **Symfony** — detect `#[Route(…)]` attributes or `@Route` annotations on controller methods
+- [x] **Laravel** — parse `routes/api.php`; extract `Route::get/post/…`, resource controllers
+- [x] **Symfony** — detect `#[Route(…)]` attributes or `@Route` annotations on controller methods
 
 ### Entity Extractors
-- [ ] **Eloquent** — detect `class Foo extends Model`, `protected $fillable`, `$casts`; parse migration `Schema::create` calls
-- [ ] **Doctrine** — detect `#[Entity]`, `#[Column]`, `#[ORM\ManyToOne]` attributes
+- [x] **Eloquent** — detect `class Foo extends Model`, `protected $fillable`, `$casts`; parse migration `Schema::create` calls
+- [x] **Doctrine** — detect `#[Entity]`, `#[Column]`, `#[ORM\ManyToOne]` attributes
 
 ---
 
