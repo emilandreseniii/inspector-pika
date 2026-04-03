@@ -2,6 +2,7 @@ import { BaseApiExtractor, ApiExtractorContext, DetectedApiApproach } from './ex
 import { SpringMvcExtractor } from './extractors/languages/java/springMvc'
 import { JaxRsExtractor } from './extractors/languages/java/jaxRs'
 import { SpringGraphqlExtractor } from './extractors/languages/java/springGraphql'
+import { NetflixDgsExtractor } from './extractors/languages/java/netflixDgs'
 import { GrpcProtoExtractor } from './extractors/shared/grpcProto'
 
 type ApiExtractorClass = new (ctx: ApiExtractorContext) => BaseApiExtractor
@@ -19,6 +20,8 @@ register('Java',   'jax_rs',      JaxRsExtractor)
 register('Kotlin', 'jax_rs',      JaxRsExtractor)
 register('Java',   'spring_graphql', SpringGraphqlExtractor)
 register('Kotlin', 'spring_graphql', SpringGraphqlExtractor)
+register('Java',   'netflix_dgs',   NetflixDgsExtractor)
+register('Kotlin', 'netflix_dgs',   NetflixDgsExtractor)
 
 // ── Cross-language ────────────────────────────────────────────────────────────
 register('cross-language', 'grpc_proto', GrpcProtoExtractor)
@@ -26,7 +29,7 @@ register('cross-language', 'grpc_proto', GrpcProtoExtractor)
 // ── Future extractors (not yet implemented) ───────────────────────────────────
 // Java
 // register('Java',   'spring_graphql',  SpringGraphqlExtractor)  // ✓ implemented
-// register('Java',   'netflix_dgs',     NetflixDgsExtractor)
+// register('Java',   'netflix_dgs',     NetflixDgsExtractor)  // ✓ implemented
 // Python
 // register('Python', 'flask',                    FlaskExtractor)
 // register('Python', 'fastapi',                  FastApiExtractor)
