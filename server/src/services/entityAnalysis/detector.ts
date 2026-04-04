@@ -323,6 +323,12 @@ async function detectGoApproaches(sourceDir: string): Promise<DetectedApproach[]
   if (/github\.com\/sqlc-dev\/sqlc|kyleconroy\/sqlc/.test(goModContent)) {
     approaches.push({ language: 'Go', approach: 'sqlc', confidence: 'high', signals: ["Tier A: sqlc found in go.mod"] })
   }
+  if (/volatiletech\/sqlboiler/.test(goModContent)) {
+    approaches.push({ language: 'Go', approach: 'sqlboiler', confidence: 'high', signals: ["Tier A: sqlboiler found in go.mod"] })
+  }
+  if (/uptrace\/bun/.test(goModContent)) {
+    approaches.push({ language: 'Go', approach: 'bun_orm', confidence: 'high', signals: ["Tier A: bun found in go.mod"] })
+  }
 
   return approaches
 }

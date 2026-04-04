@@ -29,6 +29,7 @@ import { ChiExtractor } from './extractors/languages/go/chi'
 import { FiberExtractor } from './extractors/languages/go/fiber'
 import { NetHttpExtractor } from './extractors/languages/go/netHttp'
 import { GorillaMuxExtractor } from './extractors/languages/go/gorillaMux'
+import { BeegoExtractor } from './extractors/languages/go/beego'
 import { RailsRoutesExtractor } from './extractors/languages/ruby/railsRoutes'
 import { GrapeExtractor } from './extractors/languages/ruby/grape'
 import { SinatraExtractor } from './extractors/languages/ruby/sinatra'
@@ -92,6 +93,7 @@ register('Go', 'chi',      ChiExtractor)
 register('Go', 'fiber',    FiberExtractor)
 register('Go', 'net_http',    NetHttpExtractor)
 register('Go', 'gorilla_mux', GorillaMuxExtractor)
+register('Go', 'beego',       BeegoExtractor)
 
 // ── Ruby ──────────────────────────────────────────────────────────────────────
 register('Ruby', 'rails_routes', RailsRoutesExtractor)

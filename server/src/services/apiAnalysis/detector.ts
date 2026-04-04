@@ -481,6 +481,15 @@ async function detectGoApiApproaches(sourceDir: string): Promise<DetectedApiAppr
     approaches.push({ language: 'Go', approach: 'gorilla_mux', apiStyle: 'http', confidence: scoreConfidence(gorillaMuxSignals), signals: gorillaMuxSignals })
   }
 
+  // ── Beego ────────────────────────────────────────────────────────────────
+  const beegoSignals: string[] = []
+  if (/beego\/beego|beego\/v2/.test(goModContent)) beegoSignals.push('Tier A: beego found in go.mod')
+  const beegoHits = await grepFirst(sourceDir, '**/*.go', /(?:beego|web)\.Router\s*\(/, 3)
+  if (beegoHits.length > 0) beegoSignals.push(`Tier C: beego.Router found in ${beegoHits[0]}`)
+  if (beegoSignals.length > 0) {
+    approaches.push({ language: 'Go', approach: 'beego', apiStyle: 'http', confidence: scoreConfidence(beegoSignals), signals: beegoSignals })
+  }
+
   // ── gqlgen (GraphQL) ────────────────────────────────────────────────────────
   if (/99designs\/gqlgen/.test(goModContent)) {
     approaches.push({ language: 'cross-language', approach: 'graphql_schema', apiStyle: 'graphql', confidence: 'high', signals: ['Tier A: 99designs/gqlgen found in go.mod'] })

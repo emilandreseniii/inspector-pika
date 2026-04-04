@@ -71,14 +71,14 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 - [x] **gqlgen** — detect resolver implementations from generated `ResolverRoot` interface
 - [x] **gRPC-Go** — detect service server implementations; defer to proto extractor for schema
 - [x] **gorilla/mux** — detect `r.HandleFunc(path, handler).Methods(…)`, `r.PathPrefix(…).Subrouter()`
-- [ ] **Beego** — detect `beego.Router(path, &Controller{})`, `web.Router`; controller method naming convention (Get/Post/Put/Delete)
+- [x] **Beego** — detect `beego.Router(path, &Controller{})`, `web.Router`; controller method naming convention (Get/Post/Put/Delete)
 
 ### Entity Extractors
 - [x] **GORM** — detect `gorm.Model` embedding, struct tags `gorm:"column:…"`, `AutoMigrate` calls
 - [x] **Ent** — parse generated `ent/schema/*.go` files: `Fields()`, `Edges()`
 - [x] **sqlc** — parse `sqlc.yaml` + `*.sql` query files; extract named queries and result types
-- [ ] **sqlboiler** — parse generated `models/*.go` files from sqlboiler output; extract table structs and column boil tags
-- [ ] **Bun ORM** — detect `bun.BaseModel` embedding, struct tags `bun:"table:…,column:…"`; similar shape to GORM
+- [x] **sqlboiler** — parse generated `models/*.go` files from sqlboiler output; extract table structs and column boil tags
+- [x] **Bun ORM** — detect `bun.BaseModel` embedding, struct tags `bun:"table:…,column:…"`; similar shape to GORM
 
 ---
 

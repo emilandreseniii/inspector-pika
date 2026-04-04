@@ -20,6 +20,8 @@ import { MikroOrmExtractor } from './extractors/languages/typescript/mikroOrm'
 import { GormExtractor } from './extractors/languages/go/gorm'
 import { EntExtractor } from './extractors/languages/go/ent'
 import { SqlcExtractor } from './extractors/languages/go/sqlc'
+import { SqlboilerExtractor } from './extractors/languages/go/sqlboiler'
+import { BunOrmExtractor } from './extractors/languages/go/bunOrm'
 import { ActiveRecordExtractor } from './extractors/languages/ruby/activeRecord'
 import { SequelExtractor as SequelRubyExtractor } from './extractors/languages/ruby/sequel'
 import { EfCoreExtractor } from './extractors/languages/csharp/efCore'
@@ -93,7 +95,9 @@ register('C#', 'nhibernate',  NHibernateExtractor)
 // ---- Go ----
 register('Go', 'gorm', GormExtractor)
 register('Go', 'ent',  EntExtractor)
-register('Go', 'sqlc', SqlcExtractor)
+register('Go', 'sqlc',     SqlcExtractor)
+register('Go', 'sqlboiler', SqlboilerExtractor)
+register('Go', 'bun_orm',   BunOrmExtractor)
 
 // ---- Rust ----
 register('Rust', 'diesel',  DieselExtractor)
