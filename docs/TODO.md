@@ -32,7 +32,7 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 ### Entity Extractors
 - [x] **Tortoise ORM** — detect `class Foo(Model)`, `fields.*Field`
 - [x] **Peewee** — detect `class Foo(Model)`, `*Field` column definitions
-- [ ] **SQLModel** — detect `class Foo(SQLModel, table=True)`, Pydantic-style field definitions; SQLAlchemy-backed but distinct schema syntax
+- [x] **SQLModel** — detect `class Foo(SQLModel, table=True)`, Pydantic-style field definitions; SQLAlchemy-backed but distinct schema syntax
 - [ ] **Beanie** — detect `class Foo(Document)`, `class Settings` inner class; MongoDB ODM for async Python
 
 ---
@@ -56,7 +56,7 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 - [x] **Drizzle ORM** — detect `pgTable`/`mysqlTable`/`sqliteTable` schema definitions
 - [x] **Sequelize** — detect `Model.init()`, `sequelize.define()`, field type maps
 - [x] **Mongoose** — detect `new Schema({…})`, extract field names and types
-- [ ] **MikroORM** — detect `@Entity()`, `@Property()`, `@ManyToOne()` decorators from `@mikro-orm/core`; similar shape to TypeORM
+- [x] **MikroORM** — detect `@Entity()`, `@Property()`, `@ManyToOne()` decorators from `@mikro-orm/core`; similar shape to TypeORM
 
 ---
 
@@ -120,7 +120,7 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 ### Entity Extractors
 - [x] **EF Core** — detect `DbContext`, `DbSet<T>`, `[Table]`, `[Column]`, `OnModelCreating` fluent API
 - [x] **Dapper** — detect `Query<T>`, `Execute` calls; extract DTO types used as results
-- [ ] **NHibernate** — detect `*.hbm.xml` mapping files or `ClassMap<T>` fluent mapping classes; extract entity names, properties, and relationships
+- [x] **NHibernate** — detect `*.hbm.xml` mapping files or `ClassMap<T>` fluent mapping classes; extract entity names, properties, and relationships
 
 ---
 

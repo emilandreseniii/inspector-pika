@@ -7,11 +7,13 @@ import { SqlAlchemyExtractor } from './extractors/languages/python/sqlalchemy'
 import { DjangoExtractor } from './extractors/languages/python/django'
 import { TortoiseOrmExtractor } from './extractors/languages/python/tortoiseOrm'
 import { PeeweeExtractor } from './extractors/languages/python/peewee'
+import { SqlModelExtractor } from './extractors/languages/python/sqlModel'
 import { PrismaExtractor } from './extractors/languages/typescript/prisma'
 import { TypeOrmExtractor } from './extractors/languages/typescript/typeorm'
 import { DrizzleExtractor } from './extractors/languages/typescript/drizzle'
 import { SequelizeExtractor } from './extractors/languages/typescript/sequelize'
 import { MongooseExtractor } from './extractors/languages/typescript/mongoose'
+import { MikroOrmExtractor } from './extractors/languages/typescript/mikroOrm'
 import { GormExtractor } from './extractors/languages/go/gorm'
 import { EntExtractor } from './extractors/languages/go/ent'
 import { SqlcExtractor } from './extractors/languages/go/sqlc'
@@ -19,6 +21,7 @@ import { ActiveRecordExtractor } from './extractors/languages/ruby/activeRecord'
 import { SequelExtractor as SequelRubyExtractor } from './extractors/languages/ruby/sequel'
 import { EfCoreExtractor } from './extractors/languages/csharp/efCore'
 import { DapperExtractor } from './extractors/languages/csharp/dapper'
+import { NHibernateExtractor } from './extractors/languages/csharp/nhibernate'
 import { DieselExtractor } from './extractors/languages/rust/diesel'
 import { SeaOrmExtractor } from './extractors/languages/rust/seaOrm'
 import { SqlxExtractor } from './extractors/languages/rust/sqlx'
@@ -59,6 +62,7 @@ register('Python', 'sqlalchemy',    SqlAlchemyExtractor)
 register('Python', 'django_orm',    DjangoExtractor)
 register('Python', 'tortoise_orm',  TortoiseOrmExtractor)
 register('Python', 'peewee',        PeeweeExtractor)
+register('Python', 'sql_model',     SqlModelExtractor)
 
 // ---- JavaScript / TypeScript ----
 register('TypeScript', 'prisma',      PrismaExtractor)
@@ -69,6 +73,7 @@ register('TypeScript', 'sequelize',   SequelizeExtractor)
 register('JavaScript', 'sequelize',   SequelizeExtractor)
 register('TypeScript', 'mongoose',    MongooseExtractor)
 register('JavaScript', 'mongoose',    MongooseExtractor)
+register('TypeScript', 'mikro_orm',   MikroOrmExtractor)
 
 // ---- Ruby ----
 register('Ruby', 'active_record', ActiveRecordExtractor)
@@ -76,7 +81,8 @@ register('Ruby', 'sequel',        SequelRubyExtractor)
 
 // ---- C# ----
 register('C#', 'ef_core', EfCoreExtractor)
-register('C#', 'dapper',  DapperExtractor)
+register('C#', 'dapper',      DapperExtractor)
+register('C#', 'nhibernate',  NHibernateExtractor)
 
 // ---- Go ----
 register('Go', 'gorm', GormExtractor)

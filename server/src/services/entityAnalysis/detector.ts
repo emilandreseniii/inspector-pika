@@ -184,6 +184,15 @@ async function detectPythonApproaches(sourceDir: string): Promise<DetectedApproa
     approaches.push({ language: 'Python', approach: 'tortoise_orm', confidence: computeConfidence(tortoiseSignals), signals: tortoiseSignals })
   }
 
+  // SQLModel
+  const sqlModelSignals: string[] = []
+  if (/sqlmodel/i.test(reqContent)) sqlModelSignals.push("Tier A: sqlmodel found in requirements")
+  const sqlModelCount = await grepDir(sourceDir, '**/*.py', /SQLModel\s*,\s*table\s*=\s*True/, 10)
+  if (sqlModelCount > 0) sqlModelSignals.push(`Tier B: SQLModel table class found in ${sqlModelCount} file(s)`)
+  if (sqlModelSignals.length > 0) {
+    approaches.push({ language: 'Python', approach: 'sql_model', confidence: computeConfidence(sqlModelSignals), signals: sqlModelSignals })
+  }
+
   // Peewee
   const peeweeSignals: string[] = []
   if (/peewee/i.test(reqContent)) peeweeSignals.push("Tier A: peewee found in requirements")
@@ -233,6 +242,17 @@ async function detectJsApproaches(sourceDir: string): Promise<DetectedApproach[]
   if (/["']sequelize["']/i.test(pkgContent)) seqSignals.push("Tier A: Sequelize found in package.json")
   if (seqSignals.length > 0) {
     approaches.push({ language: 'JavaScript', approach: 'sequelize', confidence: computeConfidence(seqSignals), signals: seqSignals })
+  }
+
+  // MikroORM
+  const mikroOrmSignals: string[] = []
+  if (/@mikro-orm\/core/.test(pkgContent)) mikroOrmSignals.push("Tier A: @mikro-orm/core found in package.json")
+  const mikroOrmCount = await grepDir(sourceDir, '**/*.ts', /@Entity\(\)/, 10)
+  if (mikroOrmCount > 0 && /@Property\s*\(/.test(pkgContent + '')) {
+    mikroOrmSignals.push(`Tier B: @Entity() found in ${mikroOrmCount} file(s)`)
+  }
+  if (mikroOrmSignals.length > 0) {
+    approaches.push({ language: 'TypeScript', approach: 'mikro_orm', confidence: computeConfidence(mikroOrmSignals), signals: mikroOrmSignals })
   }
 
   // Mongoose
@@ -307,6 +327,16 @@ async function detectCsharpApproaches(sourceDir: string): Promise<DetectedApproa
   }
   if (/Dapper/i.test(csprojContent)) {
     approaches.push({ language: 'C#', approach: 'dapper', confidence: 'high', signals: ["Tier A: Dapper found in .csproj"] })
+  }
+
+  // NHibernate
+  if (/NHibernate/i.test(csprojContent)) {
+    approaches.push({ language: 'C#', approach: 'nhibernate', confidence: 'high', signals: ["Tier A: NHibernate found in .csproj"] })
+  } else {
+    const hbmCount = await globCount(sourceDir, '**/*.hbm.xml')
+    if (hbmCount > 0) {
+      approaches.push({ language: 'C#', approach: 'nhibernate', confidence: 'medium', signals: [`Tier B: ${hbmCount} HBM mapping file(s) found`] })
+    }
   }
 
   return approaches
