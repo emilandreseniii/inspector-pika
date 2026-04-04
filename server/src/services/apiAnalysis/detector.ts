@@ -200,6 +200,29 @@ async function detectJavaApiApproaches(sourceDir: string): Promise<DetectedApiAp
   // We add a Java-specific signal set but only if grpc_proto is NOT already detected
   // (to avoid duplicate surfaces). We skip this and let grpc_proto cover it.
 
+  // ── Micronaut HTTP ───────────────────────────────────────────────────────
+
+  const micronautSignals: string[] = []
+
+  if (/micronaut-http-server|micronaut-runtime|io\.micronaut:micronaut/.test(buildContent)) {
+    micronautSignals.push('Tier A: Micronaut HTTP dependency found in build file')
+  }
+
+  const micronautAnnotHits = await grepFirst(sourceDir, '**/*.{java,kt}', /import\s+io\.micronaut\.http\.annotation\./, 3)
+  if (micronautAnnotHits.length > 0) {
+    micronautSignals.push(`Tier C: io.micronaut.http.annotation import found in ${micronautAnnotHits[0]}`)
+  }
+
+  if (micronautSignals.length > 0) {
+    approaches.push({
+      language: 'Java',
+      approach: 'micronaut',
+      apiStyle: 'http',
+      confidence: scoreConfidence(micronautSignals),
+      signals: micronautSignals,
+    })
+  }
+
   return approaches
 }
 
@@ -389,6 +412,15 @@ async function detectGoApiApproaches(sourceDir: string): Promise<DetectedApiAppr
     approaches.push({ language: 'Go', approach: 'fiber', apiStyle: 'http', confidence: scoreConfidence(fiberSignals), signals: fiberSignals })
   }
 
+  // ── gorilla/mux ──────────────────────────────────────────────────────────
+  const gorillaMuxSignals: string[] = []
+  if (/gorilla\/mux/.test(goModContent)) gorillaMuxSignals.push('Tier A: gorilla/mux found in go.mod')
+  const gorillaMuxHits = await grepFirst(sourceDir, '**/*.go', /mux\.NewRouter\s*\(\s*\)/, 3)
+  if (gorillaMuxHits.length > 0) gorillaMuxSignals.push(`Tier C: mux.NewRouter found in ${gorillaMuxHits[0]}`)
+  if (gorillaMuxSignals.length > 0) {
+    approaches.push({ language: 'Go', approach: 'gorilla_mux', apiStyle: 'http', confidence: scoreConfidence(gorillaMuxSignals), signals: gorillaMuxSignals })
+  }
+
   // ── gqlgen (GraphQL) ────────────────────────────────────────────────────────
   if (/99designs\/gqlgen/.test(goModContent)) {
     approaches.push({ language: 'cross-language', approach: 'graphql_schema', apiStyle: 'graphql', confidence: 'high', signals: ['Tier A: 99designs/gqlgen found in go.mod'] })
@@ -423,6 +455,16 @@ async function detectRubyApiApproaches(sourceDir: string): Promise<DetectedApiAp
     approaches.push({ language: 'Ruby', approach: 'grape', apiStyle: 'http', confidence: 'high', signals })
   }
 
+  // Sinatra
+  const sinatraSignals: string[] = []
+  const gemfileContent = await readSafe(join(sourceDir, 'Gemfile')) ?? ''
+  if (/\bsinatra\b/i.test(gemfileContent)) sinatraSignals.push('Tier A: sinatra gem found in Gemfile')
+  const sinatraHits = await grepFirst(sourceDir, '**/*.rb', /Sinatra::(?:Base|Application)|require\s+['"]sinatra['"]/, 3)
+  if (sinatraHits.length > 0) sinatraSignals.push(`Tier C: Sinatra usage found in ${sinatraHits[0]}`)
+  if (sinatraSignals.length > 0) {
+    approaches.push({ language: 'Ruby', approach: 'sinatra', apiStyle: 'http', confidence: scoreConfidence(sinatraSignals), signals: sinatraSignals })
+  }
+
   return approaches
 }
 
@@ -438,6 +480,12 @@ async function detectCsharpApiApproaches(sourceDir: string): Promise<DetectedApi
     const routeHits = await grepFirst(sourceDir, '**/*.cs', /\[Http(?:Get|Post|Put|Delete|Patch)\]/, 5)
     if (routeHits.length > 0) signals.push('Tier C: [HttpGet/Post/…] verb attributes found')
     approaches.push({ language: 'C#', approach: 'aspnet_core', apiStyle: 'http', confidence: 'high', signals })
+  }
+
+  // Minimal APIs (.NET 6+)
+  const minimalApiHits = await grepFirst(sourceDir, '**/*.cs', /\.(MapGet|MapPost|MapPut|MapDelete|MapPatch)\s*\(/, 5)
+  if (minimalApiHits.length > 0) {
+    approaches.push({ language: 'C#', approach: 'minimal_api', apiStyle: 'http', confidence: 'high', signals: [`Tier C: app.Map* route method found in ${minimalApiHits[0]}`] })
   }
 
   // Hot Chocolate / GraphQL.NET — detect GraphQL resolver patterns, route to graphql_schema
@@ -463,6 +511,15 @@ async function detectPhpApiApproaches(sourceDir: string): Promise<DetectedApiApp
     if (routeFiles > 0) {
       approaches.push({ language: 'PHP', approach: 'laravel', apiStyle: 'http', confidence: 'medium', signals: [`Tier B: ${routeFiles} routes/*.php file(s) found`] })
     }
+  }
+
+  // Slim Framework
+  const slimSignals: string[] = []
+  if (/slim\/slim/i.test(composerContent)) slimSignals.push('Tier A: slim/slim found in composer.json')
+  const slimHits = await grepFirst(sourceDir, '**/*.php', /AppFactory::create|new\s+(?:\\?Slim\\)?App\s*\(/, 3)
+  if (slimHits.length > 0) slimSignals.push(`Tier C: Slim app creation found in ${slimHits[0]}`)
+  if (slimSignals.length > 0) {
+    approaches.push({ language: 'PHP', approach: 'slim', apiStyle: 'http', confidence: scoreConfidence(slimSignals), signals: slimSignals })
   }
 
   // Symfony
@@ -507,6 +564,15 @@ async function detectRustApiApproaches(sourceDir: string): Promise<DetectedApiAp
   // tonic (gRPC-Rust) — defer to proto extractor for schema
   if (/\btonic\b/.test(cargoContent)) {
     approaches.push({ language: 'cross-language', approach: 'grpc_proto', apiStyle: 'rpc', confidence: 'high', signals: ['Tier A: tonic found in Cargo.toml'] })
+  }
+
+  // Rocket
+  const rocketSignals: string[] = []
+  if (/\brocket\b/.test(cargoContent)) rocketSignals.push('Tier A: rocket found in Cargo.toml')
+  const rocketHits = await grepFirst(sourceDir, '**/*.rs', /Rocket::build\s*\(\s*\)|#\[launch\]/, 3)
+  if (rocketHits.length > 0) rocketSignals.push(`Tier C: Rocket::build/#[launch] found in ${rocketHits[0]}`)
+  if (rocketSignals.length > 0) {
+    approaches.push({ language: 'Rust', approach: 'rocket', apiStyle: 'http', confidence: scoreConfidence(rocketSignals), signals: rocketSignals })
   }
 
   return approaches

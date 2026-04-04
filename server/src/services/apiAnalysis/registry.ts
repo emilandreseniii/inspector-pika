@@ -8,6 +8,7 @@ import { OpenApiSpecExtractor } from './extractors/shared/openApiSpec'
 import { GraphQLSchemaExtractor } from './extractors/shared/graphqlSchema'
 import { ThriftExtractor } from './extractors/shared/thrift'
 import { GrpcJavaStubExtractor } from './extractors/languages/java/grpcJavaStub'
+import { MicronautExtractor } from './extractors/languages/java/micronaut'
 import { FastApiExtractor } from './extractors/languages/python/fastapi'
 import { FlaskExtractor } from './extractors/languages/python/flask'
 import { DjangoRestFrameworkExtractor } from './extractors/languages/python/djangoRestFramework'
@@ -20,13 +21,18 @@ import { EchoExtractor } from './extractors/languages/go/echo'
 import { ChiExtractor } from './extractors/languages/go/chi'
 import { FiberExtractor } from './extractors/languages/go/fiber'
 import { NetHttpExtractor } from './extractors/languages/go/netHttp'
+import { GorillaMuxExtractor } from './extractors/languages/go/gorillaMux'
 import { RailsRoutesExtractor } from './extractors/languages/ruby/railsRoutes'
 import { GrapeExtractor } from './extractors/languages/ruby/grape'
+import { SinatraExtractor } from './extractors/languages/ruby/sinatra'
 import { AspNetCoreExtractor } from './extractors/languages/csharp/aspNetCore'
+import { MinimalApiExtractor } from './extractors/languages/csharp/minimalApi'
 import { AxumExtractor } from './extractors/languages/rust/axum'
 import { ActixWebExtractor } from './extractors/languages/rust/actixWeb'
+import { RocketExtractor } from './extractors/languages/rust/rocket'
 import { LaravelExtractor } from './extractors/languages/php/laravel'
 import { SymfonyExtractor } from './extractors/languages/php/symfony'
+import { SlimExtractor } from './extractors/languages/php/slim'
 
 type ApiExtractorClass = new (ctx: ApiExtractorContext) => BaseApiExtractor
 
@@ -47,6 +53,8 @@ register('Java',   'netflix_dgs',   NetflixDgsExtractor)
 register('Kotlin', 'netflix_dgs',   NetflixDgsExtractor)
 register('Java',   'grpc_java_stub', GrpcJavaStubExtractor)
 register('Kotlin', 'grpc_java_stub', GrpcJavaStubExtractor)
+register('Java',   'micronaut',      MicronautExtractor)
+register('Kotlin', 'micronaut',      MicronautExtractor)
 
 // ── Python ────────────────────────────────────────────────────────────────────
 register('Python', 'fastapi',                FastApiExtractor)
@@ -67,22 +75,27 @@ register('Go', 'gin',      GinExtractor)
 register('Go', 'echo',     EchoExtractor)
 register('Go', 'chi',      ChiExtractor)
 register('Go', 'fiber',    FiberExtractor)
-register('Go', 'net_http', NetHttpExtractor)
+register('Go', 'net_http',    NetHttpExtractor)
+register('Go', 'gorilla_mux', GorillaMuxExtractor)
 
 // ── Ruby ──────────────────────────────────────────────────────────────────────
 register('Ruby', 'rails_routes', RailsRoutesExtractor)
 register('Ruby', 'grape',        GrapeExtractor)
+register('Ruby', 'sinatra',      SinatraExtractor)
 
 // ── C# ────────────────────────────────────────────────────────────────────────
-register('C#', 'aspnet_core', AspNetCoreExtractor)
+register('C#', 'aspnet_core',  AspNetCoreExtractor)
+register('C#', 'minimal_api', MinimalApiExtractor)
 
 // ── Rust ──────────────────────────────────────────────────────────────────────
 register('Rust', 'axum',      AxumExtractor)
 register('Rust', 'actix_web', ActixWebExtractor)
+register('Rust', 'rocket',    RocketExtractor)
 
 // ── PHP ───────────────────────────────────────────────────────────────────────
 register('PHP', 'laravel', LaravelExtractor)
 register('PHP', 'symfony', SymfonyExtractor)
+register('PHP', 'slim',    SlimExtractor)
 
 // ── Cross-language ────────────────────────────────────────────────────────────
 register('cross-language', 'grpc_proto',      GrpcProtoExtractor)
