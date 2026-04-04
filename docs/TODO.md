@@ -25,15 +25,15 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 - [x] **FastAPI** — detect `@app.get/post/put/delete/patch`, `APIRouter`, extract path params, query params, Pydantic body types
 - [x] **Flask** — detect `@app.route`, `@blueprint.route`, extract URL rules and methods from `add_url_rule`
 - [x] **Django REST Framework** — detect `ViewSet`, `APIView`, `@action`, routers; extract serializer types as request/response
-- [ ] **Starlette** — detect `Route(path, endpoint)` in `routes=[…]` lists and `@app.route` middleware-style registration
-- [ ] **Sanic** — detect `@app.get/post/put/delete/patch`, `Blueprint` route decorators
-- [ ] **aiohttp** — detect `app.router.add_get/post/…`, `web.RouteTableDef` `@routes.get/post/…` decorators
+- [x] **Starlette** — detect `Route(path, endpoint)` in `routes=[…]` lists and `@app.route` middleware-style registration
+- [x] **Sanic** — detect `@app.get/post/put/delete/patch`, `Blueprint` route decorators
+- [x] **aiohttp** — detect `app.router.add_get/post/…`, `web.RouteTableDef` `@routes.get/post/…` decorators
 
 ### Entity Extractors
 - [x] **Tortoise ORM** — detect `class Foo(Model)`, `fields.*Field`
 - [x] **Peewee** — detect `class Foo(Model)`, `*Field` column definitions
 - [x] **SQLModel** — detect `class Foo(SQLModel, table=True)`, Pydantic-style field definitions; SQLAlchemy-backed but distinct schema syntax
-- [ ] **Beanie** — detect `class Foo(Document)`, `class Settings` inner class; MongoDB ODM for async Python
+- [x] **Beanie** — detect `class Foo(Document)`, `class Settings` inner class; MongoDB ODM for async Python
 
 ---
 

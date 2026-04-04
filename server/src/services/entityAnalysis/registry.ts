@@ -8,6 +8,7 @@ import { DjangoExtractor } from './extractors/languages/python/django'
 import { TortoiseOrmExtractor } from './extractors/languages/python/tortoiseOrm'
 import { PeeweeExtractor } from './extractors/languages/python/peewee'
 import { SqlModelExtractor } from './extractors/languages/python/sqlModel'
+import { BeanieExtractor } from './extractors/languages/python/beanie'
 import { ExposedExtractor } from './extractors/languages/kotlin/exposed'
 import { KtormExtractor } from './extractors/languages/kotlin/ktorm'
 import { PrismaExtractor } from './extractors/languages/typescript/prisma'
@@ -67,6 +68,7 @@ register('Python', 'django_orm',    DjangoExtractor)
 register('Python', 'tortoise_orm',  TortoiseOrmExtractor)
 register('Python', 'peewee',        PeeweeExtractor)
 register('Python', 'sql_model',     SqlModelExtractor)
+register('Python', 'beanie',        BeanieExtractor)
 
 // ---- JavaScript / TypeScript ----
 register('TypeScript', 'prisma',      PrismaExtractor)

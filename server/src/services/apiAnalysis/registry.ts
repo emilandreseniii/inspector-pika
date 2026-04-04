@@ -13,6 +13,9 @@ import { KtorExtractor } from './extractors/languages/kotlin/ktor'
 import { FastApiExtractor } from './extractors/languages/python/fastapi'
 import { FlaskExtractor } from './extractors/languages/python/flask'
 import { DjangoRestFrameworkExtractor } from './extractors/languages/python/djangoRestFramework'
+import { StarletteExtractor } from './extractors/languages/python/starlette'
+import { SanicExtractor } from './extractors/languages/python/sanic'
+import { AiohttpExtractor } from './extractors/languages/python/aiohttp'
 import { ExpressExtractor } from './extractors/languages/typescript/express'
 import { NestJsExtractor } from './extractors/languages/typescript/nestjs'
 import { FastifyExtractor } from './extractors/languages/typescript/fastify'
@@ -65,6 +68,9 @@ register('Kotlin', 'ktor',           KtorExtractor)
 register('Python', 'fastapi',                FastApiExtractor)
 register('Python', 'flask',                  FlaskExtractor)
 register('Python', 'django_rest_framework',  DjangoRestFrameworkExtractor)
+register('Python', 'starlette',              StarletteExtractor)
+register('Python', 'sanic',                  SanicExtractor)
+register('Python', 'aiohttp',                AiohttpExtractor)
 
 // ── TypeScript / JavaScript ───────────────────────────────────────────────────
 register('TypeScript', 'express',  ExpressExtractor)

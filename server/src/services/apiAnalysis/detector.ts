@@ -294,6 +294,33 @@ async function detectPythonApiApproaches(sourceDir: string): Promise<DetectedApi
     approaches.push({ language: 'Python', approach: 'django_rest_framework', apiStyle: 'http', confidence: scoreConfidence(drfSignals), signals: drfSignals })
   }
 
+  // ── Starlette ────────────────────────────────────────────────────────────
+  const starletteSignals: string[] = []
+  if (/\bstarlette\b/i.test(depContent)) starletteSignals.push('Tier A: starlette dependency found')
+  const starletteHits = await grepFirst(sourceDir, '**/*.py', /from\s+starlette\s+import|Starlette\s*\(/, 3)
+  if (starletteHits.length > 0) starletteSignals.push(`Tier C: Starlette usage found in ${starletteHits[0]}`)
+  if (starletteSignals.length > 0) {
+    approaches.push({ language: 'Python', approach: 'starlette', apiStyle: 'http', confidence: scoreConfidence(starletteSignals), signals: starletteSignals })
+  }
+
+  // ── Sanic ────────────────────────────────────────────────────────────────
+  const sanicSignals: string[] = []
+  if (/\bsanic\b/i.test(depContent)) sanicSignals.push('Tier A: sanic dependency found')
+  const sanicHits = await grepFirst(sourceDir, '**/*.py', /from\s+sanic\s+import|Sanic\s*\(/, 3)
+  if (sanicHits.length > 0) sanicSignals.push(`Tier C: Sanic usage found in ${sanicHits[0]}`)
+  if (sanicSignals.length > 0) {
+    approaches.push({ language: 'Python', approach: 'sanic', apiStyle: 'http', confidence: scoreConfidence(sanicSignals), signals: sanicSignals })
+  }
+
+  // ── aiohttp ──────────────────────────────────────────────────────────────
+  const aiohttpSignals: string[] = []
+  if (/\baiohttp\b/i.test(depContent)) aiohttpSignals.push('Tier A: aiohttp dependency found')
+  const aiohttpHits = await grepFirst(sourceDir, '**/*.py', /from\s+aiohttp\s+import|web\.Application\s*\(/, 3)
+  if (aiohttpHits.length > 0) aiohttpSignals.push(`Tier C: aiohttp usage found in ${aiohttpHits[0]}`)
+  if (aiohttpSignals.length > 0) {
+    approaches.push({ language: 'Python', approach: 'aiohttp', apiStyle: 'http', confidence: scoreConfidence(aiohttpSignals), signals: aiohttpSignals })
+  }
+
   return approaches
 }
 

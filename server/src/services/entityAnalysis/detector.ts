@@ -205,6 +205,15 @@ async function detectPythonApproaches(sourceDir: string): Promise<DetectedApproa
     approaches.push({ language: 'Python', approach: 'peewee', confidence: computeConfidence(peeweeSignals), signals: peeweeSignals })
   }
 
+  // Beanie (MongoDB ODM)
+  const beanieSignals: string[] = []
+  if (/beanie/i.test(reqContent)) beanieSignals.push("Tier A: beanie found in requirements")
+  const beanieCount = await grepDir(sourceDir, '**/*.py', /from\s+beanie\s+import|class\s+\w+\s*\(\s*Document\s*\)/, 10)
+  if (beanieCount > 0) beanieSignals.push(`Tier B: Beanie Document class found in ${beanieCount} file(s)`)
+  if (beanieSignals.length > 0) {
+    approaches.push({ language: 'Python', approach: 'beanie', confidence: computeConfidence(beanieSignals), signals: beanieSignals })
+  }
+
   return approaches
 }
 
