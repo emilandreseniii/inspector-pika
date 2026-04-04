@@ -24,6 +24,8 @@ import { SqlboilerExtractor } from './extractors/languages/go/sqlboiler'
 import { BunOrmExtractor } from './extractors/languages/go/bunOrm'
 import { ActiveRecordExtractor } from './extractors/languages/ruby/activeRecord'
 import { SequelExtractor as SequelRubyExtractor } from './extractors/languages/ruby/sequel'
+import { MongoidExtractor } from './extractors/languages/ruby/mongoid'
+import { RomExtractor } from './extractors/languages/ruby/rom'
 import { EfCoreExtractor } from './extractors/languages/csharp/efCore'
 import { DapperExtractor } from './extractors/languages/csharp/dapper'
 import { NHibernateExtractor } from './extractors/languages/csharp/nhibernate'
@@ -86,6 +88,8 @@ register('TypeScript', 'mikro_orm',   MikroOrmExtractor)
 // ---- Ruby ----
 register('Ruby', 'active_record', ActiveRecordExtractor)
 register('Ruby', 'sequel',        SequelRubyExtractor)
+register('Ruby', 'mongoid',       MongoidExtractor)
+register('Ruby', 'rom',           RomExtractor)
 
 // ---- C# ----
 register('C#', 'ef_core', EfCoreExtractor)

@@ -305,6 +305,24 @@ async function detectRubyApproaches(sourceDir: string): Promise<DetectedApproach
     approaches.push({ language: 'Ruby', approach: 'sequel', confidence: computeConfidence(sequelSignals), signals: sequelSignals })
   }
 
+  // Mongoid
+  const mongoidSignals: string[] = []
+  if (/\bmongoid\b/i.test(gemfileContent)) mongoidSignals.push('Tier A: Mongoid found in Gemfile')
+  const mongoidCount = await grepDir(sourceDir, '**/*.rb', /include\s+Mongoid::Document/, 10)
+  if (mongoidCount > 0) mongoidSignals.push(`Tier B: Mongoid::Document include found in ${mongoidCount} file(s)`)
+  if (mongoidSignals.length > 0) {
+    approaches.push({ language: 'Ruby', approach: 'mongoid', confidence: computeConfidence(mongoidSignals), signals: mongoidSignals })
+  }
+
+  // ROM (Ruby Object Mapper)
+  const romSignals: string[] = []
+  if (/\brom\b|\brom-rb\b|\brom-sql\b/i.test(gemfileContent)) romSignals.push('Tier A: ROM found in Gemfile')
+  const romCount = await grepDir(sourceDir, '**/*.rb', /ROM::Relation/, 10)
+  if (romCount > 0) romSignals.push(`Tier B: ROM::Relation subclass found in ${romCount} file(s)`)
+  if (romSignals.length > 0) {
+    approaches.push({ language: 'Ruby', approach: 'rom', confidence: computeConfidence(romSignals), signals: romSignals })
+  }
+
   return approaches
 }
 

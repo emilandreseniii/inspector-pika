@@ -11,8 +11,8 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 - [x] **Netflix DGS** — detect `@DgsQuery`, `@DgsMutation`, `@DgsSubscription`; detector signal exists, no extractor
 - [x] **gRPC (generated Java stubs)** — detect server implementations that extend `*Grpc.ImplBase`; complements the proto-file extractor
 - [x] **Micronaut HTTP** — detect `@Controller`, `@Get`, `@Post`, `@Put`, `@Delete`, `@Patch` from `io.micronaut.http.annotation`; similar shape to Spring MVC
-- [ ] **Quarkus REST / MicroProfile JAX-RS** — detect `@Path`, `@GET`, `@POST` from `jakarta.ws.rs` / `javax.ws.rs`; can reuse JAX-RS extractor with Quarkus detection signal
-- [ ] **Vert.x Web** — detect `router.get(…).handler(…)`, `router.route(…)` in Java/Kotlin source files
+- [x] **Quarkus REST / MicroProfile JAX-RS** — detect `@Path`, `@GET`, `@POST` from `jakarta.ws.rs` / `javax.ws.rs`; can reuse JAX-RS extractor with Quarkus detection signal
+- [x] **Vert.x Web** — detect `router.get(…).handler(…)`, `router.route(…)` in Java/Kotlin source files
 
 ### Entity Extractors
 - [x] **Spring Data JDBC** — detect `@Table`, `@Column`, `@MappedCollection`; detector signal exists, no extractor
@@ -104,8 +104,8 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 ### Entity Extractors
 - [x] **ActiveRecord** — detect `class Foo < ApplicationRecord`, parse schema migrations for column definitions
 - [x] **Sequel** — detect `class Foo < Sequel::Model`, `DB.create_table` calls
-- [ ] **Mongoid** — detect `class Foo`, `include Mongoid::Document`, `field :name, type: String`; MongoDB ODM for Ruby
-- [ ] **ROM (Ruby Object Mapper)** — detect `class Foo < ROM::Relation`, `schema(:table_name)` blocks with `attribute` definitions
+- [x] **Mongoid** — detect `class Foo`, `include Mongoid::Document`, `field :name, type: String`; MongoDB ODM for Ruby
+- [x] **ROM (Ruby Object Mapper)** — detect `class Foo < ROM::Relation`, `schema(:table_name)` blocks with `attribute` definitions
 
 ---
 
@@ -161,7 +161,7 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 
 ### API Extractors
 - [x] **Ktor** — detect `routing { get(path) {…} }`, `route(path) { get {…} }` DSL in `Application.module` blocks
-- [ ] **Spring MVC (Kotlin)** — already covered by the Java Spring MVC extractor; add detection signal for Kotlin + Spring Boot
+- [x] **Spring MVC (Kotlin)** — already covered by the Java Spring MVC extractor; add detection signal for Kotlin + Spring Boot
 
 ### Entity Extractors
 - [x] **Exposed** — detect `object Foo : Table("table_name")` and `IntIdTable`/`LongIdTable`; parse `Column<T>` property definitions

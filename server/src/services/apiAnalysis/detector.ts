@@ -227,6 +227,15 @@ async function detectJavaApiApproaches(sourceDir: string): Promise<DetectedApiAp
     })
   }
 
+  // ── Vert.x Web ───────────────────────────────────────────────────────────
+  const vertxSignals: string[] = []
+  if (/io\.vertx:vertx-web|vertx-core/.test(buildContent)) vertxSignals.push('Tier A: vertx-web found in build file')
+  const vertxHits = await grepFirst(sourceDir, '**/*.{java,kt}', /import\s+io\.vertx\.ext\.web\.|Router\.router\s*\(/, 3)
+  if (vertxHits.length > 0) vertxSignals.push(`Tier C: Vert.x Web usage found in ${vertxHits[0]}`)
+  if (vertxSignals.length > 0) {
+    approaches.push({ language: 'Java', approach: 'vertx_web', apiStyle: 'http', confidence: scoreConfidence(vertxSignals), signals: vertxSignals })
+  }
+
   return approaches
 }
 
@@ -654,6 +663,15 @@ async function detectKotlinApiApproaches(sourceDir: string): Promise<DetectedApi
 
   const gradleContent = await readSafe(join(sourceDir, 'build.gradle.kts'))
     ?? await readSafe(join(sourceDir, 'build.gradle')) ?? ''
+
+  // Spring MVC (Kotlin) — same annotations as Java, needs Kotlin-language approach
+  const kotlinSpringSignals: string[] = []
+  if (/spring-boot-starter-web\b|spring-webmvc\b/.test(gradleContent)) kotlinSpringSignals.push('Tier A: spring-boot-starter-web found in build file')
+  const kotlinControllerHits = await grepFirst(sourceDir, '**/*.kt', /@RestController\b|@Controller\b/, 3)
+  if (kotlinControllerHits.length > 0) kotlinSpringSignals.push(`Tier C: @RestController/@Controller found in ${kotlinControllerHits[0]}`)
+  if (kotlinSpringSignals.length > 0) {
+    approaches.push({ language: 'Kotlin', approach: 'spring_mvc', apiStyle: 'http', confidence: scoreConfidence(kotlinSpringSignals), signals: kotlinSpringSignals })
+  }
 
   // Ktor
   const ktorSignals: string[] = []

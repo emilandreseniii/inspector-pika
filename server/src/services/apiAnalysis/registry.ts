@@ -9,6 +9,7 @@ import { GraphQLSchemaExtractor } from './extractors/shared/graphqlSchema'
 import { ThriftExtractor } from './extractors/shared/thrift'
 import { GrpcJavaStubExtractor } from './extractors/languages/java/grpcJavaStub'
 import { MicronautExtractor } from './extractors/languages/java/micronaut'
+import { VertxWebExtractor } from './extractors/languages/java/vertxWeb'
 import { KtorExtractor } from './extractors/languages/kotlin/ktor'
 import { FastApiExtractor } from './extractors/languages/python/fastapi'
 import { FlaskExtractor } from './extractors/languages/python/flask'
@@ -63,6 +64,8 @@ register('Java',   'grpc_java_stub', GrpcJavaStubExtractor)
 register('Kotlin', 'grpc_java_stub', GrpcJavaStubExtractor)
 register('Java',   'micronaut',      MicronautExtractor)
 register('Kotlin', 'micronaut',      MicronautExtractor)
+register('Java',   'vertx_web',      VertxWebExtractor)
+register('Kotlin', 'vertx_web',      VertxWebExtractor)
 register('Kotlin', 'ktor',           KtorExtractor)
 
 // ── Python ────────────────────────────────────────────────────────────────────
