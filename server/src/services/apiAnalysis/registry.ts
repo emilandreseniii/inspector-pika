@@ -9,6 +9,7 @@ import { GraphQLSchemaExtractor } from './extractors/shared/graphqlSchema'
 import { ThriftExtractor } from './extractors/shared/thrift'
 import { GrpcJavaStubExtractor } from './extractors/languages/java/grpcJavaStub'
 import { MicronautExtractor } from './extractors/languages/java/micronaut'
+import { KtorExtractor } from './extractors/languages/kotlin/ktor'
 import { FastApiExtractor } from './extractors/languages/python/fastapi'
 import { FlaskExtractor } from './extractors/languages/python/flask'
 import { DjangoRestFrameworkExtractor } from './extractors/languages/python/djangoRestFramework'
@@ -55,6 +56,7 @@ register('Java',   'grpc_java_stub', GrpcJavaStubExtractor)
 register('Kotlin', 'grpc_java_stub', GrpcJavaStubExtractor)
 register('Java',   'micronaut',      MicronautExtractor)
 register('Kotlin', 'micronaut',      MicronautExtractor)
+register('Kotlin', 'ktor',           KtorExtractor)
 
 // ── Python ────────────────────────────────────────────────────────────────────
 register('Python', 'fastapi',                FastApiExtractor)

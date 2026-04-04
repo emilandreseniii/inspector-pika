@@ -160,11 +160,11 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 ## Kotlin
 
 ### API Extractors
-- [ ] **Ktor** — detect `routing { get(path) {…} }`, `route(path) { get {…} }` DSL in `Application.module` blocks
+- [x] **Ktor** — detect `routing { get(path) {…} }`, `route(path) { get {…} }` DSL in `Application.module` blocks
 - [ ] **Spring MVC (Kotlin)** — already covered by the Java Spring MVC extractor; add detection signal for Kotlin + Spring Boot
 
 ### Entity Extractors
-- [ ] **Exposed** — detect `object Foo : Table("table_name")` and `IntIdTable`/`LongIdTable`; parse `Column<T>` property definitions
+- [x] **Exposed** — detect `object Foo : Table("table_name")` and `IntIdTable`/`LongIdTable`; parse `Column<T>` property definitions
 - [ ] **KTorm** — detect `object Foo : Table<Bar>("table_name")`, `val col = int("col_name").bindTo {…}` column definitions
 
 ---

@@ -8,6 +8,7 @@ import { DjangoExtractor } from './extractors/languages/python/django'
 import { TortoiseOrmExtractor } from './extractors/languages/python/tortoiseOrm'
 import { PeeweeExtractor } from './extractors/languages/python/peewee'
 import { SqlModelExtractor } from './extractors/languages/python/sqlModel'
+import { ExposedExtractor } from './extractors/languages/kotlin/exposed'
 import { PrismaExtractor } from './extractors/languages/typescript/prisma'
 import { TypeOrmExtractor } from './extractors/languages/typescript/typeorm'
 import { DrizzleExtractor } from './extractors/languages/typescript/drizzle'
@@ -46,6 +47,7 @@ register('Java',   'mybatis',           MybatisExtractor)
 register('Java',   'jooq',              JooqExtractor)
 register('Java',   'spring_data_jdbc', SpringDataJdbcExtractor)
 register('Kotlin', 'spring_data_jdbc', SpringDataJdbcExtractor)
+register('Kotlin', 'exposed',          ExposedExtractor)
 
 // ---- Cross-language ----
 register('cross-language', 'sql_ddl',           SqlDdlExtractor)

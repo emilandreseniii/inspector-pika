@@ -30,6 +30,10 @@ export async function detectApiApproaches(
     detectorPromises.push(detectJavaApiApproaches(sourceDir))
   }
 
+  if (detectedLanguages.has('Kotlin')) {
+    detectorPromises.push(detectKotlinApiApproaches(sourceDir))
+  }
+
   if (detectedLanguages.has('Python')) {
     detectorPromises.push(detectPythonApiApproaches(sourceDir))
   }
@@ -573,6 +577,26 @@ async function detectRustApiApproaches(sourceDir: string): Promise<DetectedApiAp
   if (rocketHits.length > 0) rocketSignals.push(`Tier C: Rocket::build/#[launch] found in ${rocketHits[0]}`)
   if (rocketSignals.length > 0) {
     approaches.push({ language: 'Rust', approach: 'rocket', apiStyle: 'http', confidence: scoreConfidence(rocketSignals), signals: rocketSignals })
+  }
+
+  return approaches
+}
+
+// ── Kotlin API detector ───────────────────────────────────────────────────────
+
+async function detectKotlinApiApproaches(sourceDir: string): Promise<DetectedApiApproach[]> {
+  const approaches: DetectedApiApproach[] = []
+
+  const gradleContent = await readSafe(join(sourceDir, 'build.gradle.kts'))
+    ?? await readSafe(join(sourceDir, 'build.gradle')) ?? ''
+
+  // Ktor
+  const ktorSignals: string[] = []
+  if (/io\.ktor:ktor-server/.test(gradleContent)) ktorSignals.push('Tier A: io.ktor:ktor-server found in build file')
+  const ktorHits = await grepFirst(sourceDir, '**/*.kt', /\brouting\s*\{/, 3)
+  if (ktorHits.length > 0) ktorSignals.push(`Tier C: routing { } block found in ${ktorHits[0]}`)
+  if (ktorSignals.length > 0) {
+    approaches.push({ language: 'Kotlin', approach: 'ktor', apiStyle: 'http', confidence: scoreConfidence(ktorSignals), signals: ktorSignals })
   }
 
   return approaches

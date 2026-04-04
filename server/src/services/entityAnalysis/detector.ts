@@ -52,6 +52,9 @@ export async function detectApproaches(
   if (detectedLanguages.has('Rust')) {
     detectorPromises.push(detectRustApproaches(sourceDir))
   }
+  if (detectedLanguages.has('Kotlin')) {
+    detectorPromises.push(detectKotlinApproaches(sourceDir))
+  }
 
   const results = await Promise.allSettled(detectorPromises)
   for (const result of results) {
@@ -372,6 +375,28 @@ async function detectRustApproaches(sourceDir: string): Promise<DetectedApproach
   }
   if (/sqlx/.test(cargoContent)) {
     approaches.push({ language: 'Rust', approach: 'sqlx', confidence: 'high', signals: ["Tier A: sqlx found in Cargo.toml"] })
+  }
+
+  return approaches
+}
+
+// ---- Kotlin detector ----
+
+async function detectKotlinApproaches(sourceDir: string): Promise<DetectedApproach[]> {
+  const approaches: DetectedApproach[] = []
+
+  // Exposed
+  const exposedSignals: string[] = []
+  const [buildContent] = await Promise.all([
+    readSafe(join(sourceDir, 'build.gradle.kts')).then((c) => c || readSafe(join(sourceDir, 'build.gradle'))).then((c) => c ?? ''),
+  ])
+  if (/exposed-core|exposed-dao|jetbrains\.exposed/.test(buildContent)) {
+    exposedSignals.push("Tier A: Exposed dependency found in build.gradle")
+  }
+  const exposedCount = await grepDir(sourceDir, '**/*.kt', /:\s*(?:Int|Long|UUID)?(?:Id)?Table\s*\(/, 20)
+  if (exposedCount > 0) exposedSignals.push(`Tier B: Table object found in ${exposedCount} file(s)`)
+  if (exposedSignals.length > 0) {
+    approaches.push({ language: 'Kotlin', approach: 'exposed', confidence: computeConfidence(exposedSignals), signals: exposedSignals })
   }
 
   return approaches
