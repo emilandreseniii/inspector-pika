@@ -34,6 +34,14 @@ import { SeaOrmExtractor } from './extractors/languages/rust/seaOrm'
 import { SqlxExtractor } from './extractors/languages/rust/sqlx'
 import { EloquentExtractor } from './extractors/languages/php/eloquent'
 import { DoctrineExtractor } from './extractors/languages/php/doctrine'
+import { CycleOrmExtractor } from './extractors/languages/php/cycleOrm'
+import { PropelExtractor } from './extractors/languages/php/propel'
+import { SlickExtractor } from './extractors/languages/scala/slick'
+import { DoobieExtractor } from './extractors/languages/scala/doobie'
+import { QuillExtractor } from './extractors/languages/scala/quill'
+import { EctoExtractor } from './extractors/languages/elixir/ecto'
+import { FluentExtractor } from './extractors/languages/swift/fluent'
+import { GrdbExtractor } from './extractors/languages/swift/grdb'
 import { SqlDdlExtractor } from './extractors/shared/sqlDdlExtractor'
 import { MigrationFileExtractor } from './extractors/shared/migrationFileExtractor'
 import { ProtoMessagesExtractor } from './extractors/shared/protoMessages'
@@ -111,6 +119,20 @@ register('Rust', 'sqlx',    SqlxExtractor)
 // ---- PHP ----
 register('PHP', 'eloquent', EloquentExtractor)
 register('PHP', 'doctrine', DoctrineExtractor)
+register('PHP', 'cycle_orm', CycleOrmExtractor)
+register('PHP', 'propel',    PropelExtractor)
+
+// ---- Scala ----
+register('Scala', 'slick',  SlickExtractor)
+register('Scala', 'doobie', DoobieExtractor)
+register('Scala', 'quill',  QuillExtractor)
+
+// ---- Elixir ----
+register('Elixir', 'ecto', EctoExtractor)
+
+// ---- Swift ----
+register('Swift', 'fluent', FluentExtractor)
+register('Swift', 'grdb',   GrdbExtractor)
 
 export function getExtractor(
   language: string,

@@ -62,6 +62,18 @@ export async function detectApiApproaches(
     detectorPromises.push(detectPhpApiApproaches(sourceDir))
   }
 
+  if (detectedLanguages.has('Scala')) {
+    detectorPromises.push(detectScalaApiApproaches(sourceDir))
+  }
+
+  if (detectedLanguages.has('Elixir')) {
+    detectorPromises.push(detectElixirApiApproaches(sourceDir))
+  }
+
+  if (detectedLanguages.has('Swift')) {
+    detectorPromises.push(detectSwiftApiApproaches(sourceDir))
+  }
+
   const results = await Promise.allSettled(detectorPromises)
   for (const result of results) {
     if (result.status === 'fulfilled') approaches.push(...result.value)
@@ -572,6 +584,12 @@ async function detectCsharpApiApproaches(sourceDir: string): Promise<DetectedApi
     approaches.push({ language: 'cross-language', approach: 'graphql_schema', apiStyle: 'graphql', confidence: 'high', signals: [`Tier C: Hot Chocolate/GraphQL.NET resolver pattern found in ${hotChocolateHits[0]}`] })
   }
 
+  // gRPC (Grpc.AspNetCore) — detect *Base subclasses
+  const grpcHits = await grepFirst(sourceDir, '**/*.cs', /:\s*\w+\.[\w]+Base\b|ServerCallContext/, 3)
+  if (grpcHits.length > 0) {
+    approaches.push({ language: 'C#', approach: 'grpc', apiStyle: 'rpc', confidence: 'high', signals: [`Tier C: gRPC *Base subclass or ServerCallContext found in ${grpcHits[0]}`] })
+  }
+
   return approaches
 }
 
@@ -608,6 +626,15 @@ async function detectPhpApiApproaches(sourceDir: string): Promise<DetectedApiApp
     if (routeHits.length > 0) {
       approaches.push({ language: 'PHP', approach: 'symfony', apiStyle: 'http', confidence: 'medium', signals: [`Tier C: #[Route] attribute found in ${routeHits[0]}`] })
     }
+  }
+
+  // Lumen
+  const lumenSignals: string[] = []
+  if (/laravel\/lumen-framework/i.test(composerContent)) lumenSignals.push('Tier A: laravel/lumen-framework found in composer.json')
+  const lumenHits = await grepFirst(sourceDir, '**/*.php', /\$router->(get|post|put|delete|patch)\s*\(/, 3)
+  if (lumenHits.length > 0) lumenSignals.push(`Tier C: $router-> route registration found in ${lumenHits[0]}`)
+  if (lumenSignals.length > 0) {
+    approaches.push({ language: 'PHP', approach: 'lumen', apiStyle: 'http', confidence: scoreConfidence(lumenSignals), signals: lumenSignals })
   }
 
   return approaches
@@ -651,6 +678,24 @@ async function detectRustApiApproaches(sourceDir: string): Promise<DetectedApiAp
   if (rocketHits.length > 0) rocketSignals.push(`Tier C: Rocket::build/#[launch] found in ${rocketHits[0]}`)
   if (rocketSignals.length > 0) {
     approaches.push({ language: 'Rust', approach: 'rocket', apiStyle: 'http', confidence: scoreConfidence(rocketSignals), signals: rocketSignals })
+  }
+
+  // warp
+  const warpSignals: string[] = []
+  if (/\bwarp\b/.test(cargoContent)) warpSignals.push('Tier A: warp found in Cargo.toml')
+  const warpHits = await grepFirst(sourceDir, '**/*.rs', /warp::(?:path|get|post|put|delete|filter)/, 3)
+  if (warpHits.length > 0) warpSignals.push(`Tier C: warp filter usage found in ${warpHits[0]}`)
+  if (warpSignals.length > 0) {
+    approaches.push({ language: 'Rust', approach: 'warp', apiStyle: 'http', confidence: scoreConfidence(warpSignals), signals: warpSignals })
+  }
+
+  // poem
+  const poemSignals: string[] = []
+  if (/\bpoem\b/.test(cargoContent)) poemSignals.push('Tier A: poem found in Cargo.toml')
+  const poemHits = await grepFirst(sourceDir, '**/*.rs', /use\s+poem::|Route::new\s*\(/, 3)
+  if (poemHits.length > 0) poemSignals.push(`Tier C: poem usage found in ${poemHits[0]}`)
+  if (poemSignals.length > 0) {
+    approaches.push({ language: 'Rust', approach: 'poem', apiStyle: 'http', confidence: scoreConfidence(poemSignals), signals: poemSignals })
   }
 
   return approaches
@@ -843,6 +888,95 @@ async function grepFirst(sourceDir: string, fileGlob: string, pattern: RegExp, l
     } catch { /* skip */ }
   }
   return hits
+}
+
+// ── Scala API detector ────────────────────────────────────────────────────────
+
+async function detectScalaApiApproaches(sourceDir: string): Promise<DetectedApiApproach[]> {
+  const approaches: DetectedApiApproach[] = []
+  const buildContent = await readSafe(join(sourceDir, 'build.sbt')) ?? ''
+  const playConf = await globCount(sourceDir, '**/conf/routes')
+
+  // Play Framework
+  if (playConf > 0) {
+    approaches.push({ language: 'Scala', approach: 'play', apiStyle: 'http', confidence: 'high', signals: [`Tier B: conf/routes file found`] })
+  } else if (/com\.typesafe\.play/.test(buildContent)) {
+    approaches.push({ language: 'Scala', approach: 'play', apiStyle: 'http', confidence: 'medium', signals: ['Tier A: play found in build.sbt'] })
+  }
+
+  // Akka HTTP
+  const akkaSignals: string[] = []
+  if (/akka-http/.test(buildContent)) akkaSignals.push('Tier A: akka-http found in build.sbt')
+  const akkaHits = await grepFirst(sourceDir, '**/*.scala', /import\s+akka\.http\.scaladsl/, 3)
+  if (akkaHits.length > 0) akkaSignals.push(`Tier C: akka.http.scaladsl import in ${akkaHits[0]}`)
+  if (akkaSignals.length > 0) {
+    approaches.push({ language: 'Scala', approach: 'akka_http', apiStyle: 'http', confidence: scoreConfidence(akkaSignals), signals: akkaSignals })
+  }
+
+  // http4s
+  const http4sSignals: string[] = []
+  if (/http4s/.test(buildContent)) http4sSignals.push('Tier A: http4s found in build.sbt')
+  const http4sHits = await grepFirst(sourceDir, '**/*.scala', /import\s+org\.http4s|HttpRoutes\.of/, 3)
+  if (http4sHits.length > 0) http4sSignals.push(`Tier C: http4s usage found in ${http4sHits[0]}`)
+  if (http4sSignals.length > 0) {
+    approaches.push({ language: 'Scala', approach: 'http4s', apiStyle: 'http', confidence: scoreConfidence(http4sSignals), signals: http4sSignals })
+  }
+
+  return approaches
+}
+
+// ── Elixir API detector ───────────────────────────────────────────────────────
+
+async function detectElixirApiApproaches(sourceDir: string): Promise<DetectedApiApproach[]> {
+  const approaches: DetectedApiApproach[] = []
+  const mixContent = await readSafe(join(sourceDir, 'mix.exs')) ?? ''
+
+  // Phoenix
+  const phoenixSignals: string[] = []
+  if (/:phoenix\b/.test(mixContent)) phoenixSignals.push('Tier A: :phoenix found in mix.exs')
+  const routerHits = await grepFirst(sourceDir, '**/router.ex', /use\s+\w+,\s*:router|Phoenix\.Router/, 3)
+  if (routerHits.length > 0) phoenixSignals.push(`Tier C: Phoenix router found in ${routerHits[0]}`)
+  if (phoenixSignals.length > 0) {
+    approaches.push({ language: 'Elixir', approach: 'phoenix', apiStyle: 'http', confidence: scoreConfidence(phoenixSignals), signals: phoenixSignals })
+  }
+
+  // Plug.Router
+  const plugSignals: string[] = []
+  if (/:plug\b/.test(mixContent)) plugSignals.push('Tier A: :plug found in mix.exs')
+  const plugHits = await grepFirst(sourceDir, '**/*.ex', /use\s+Plug\.Router|plug\s+:match/, 3)
+  if (plugHits.length > 0) plugSignals.push(`Tier C: Plug.Router usage found in ${plugHits[0]}`)
+  if (plugSignals.length > 0) {
+    approaches.push({ language: 'Elixir', approach: 'plug_router', apiStyle: 'http', confidence: scoreConfidence(plugSignals), signals: plugSignals })
+  }
+
+  return approaches
+}
+
+// ── Swift API detector ────────────────────────────────────────────────────────
+
+async function detectSwiftApiApproaches(sourceDir: string): Promise<DetectedApiApproach[]> {
+  const approaches: DetectedApiApproach[]= []
+  const packageContent = await readSafe(join(sourceDir, 'Package.swift')) ?? ''
+
+  // Vapor
+  const vaporSignals: string[] = []
+  if (/\.package.*vapor\/vapor|"vapor"/.test(packageContent)) vaporSignals.push('Tier A: vapor found in Package.swift')
+  const vaporHits = await grepFirst(sourceDir, '**/*.swift', /import\s+Vapor|app\.get\s*\(|app\.post\s*\(/, 3)
+  if (vaporHits.length > 0) vaporSignals.push(`Tier C: Vapor usage found in ${vaporHits[0]}`)
+  if (vaporSignals.length > 0) {
+    approaches.push({ language: 'Swift', approach: 'vapor', apiStyle: 'http', confidence: scoreConfidence(vaporSignals), signals: vaporSignals })
+  }
+
+  // Hummingbird
+  const hbSignals: string[] = []
+  if (/hummingbird/.test(packageContent)) hbSignals.push('Tier A: hummingbird found in Package.swift')
+  const hbHits = await grepFirst(sourceDir, '**/*.swift', /import\s+Hummingbird|HBApplication|app\.router\.(?:get|post)/, 3)
+  if (hbHits.length > 0) hbSignals.push(`Tier C: Hummingbird usage found in ${hbHits[0]}`)
+  if (hbSignals.length > 0) {
+    approaches.push({ language: 'Swift', approach: 'hummingbird', apiStyle: 'http', confidence: scoreConfidence(hbSignals), signals: hbSignals })
+  }
+
+  return approaches
 }
 
 function buildFileMatcher(pattern: string): (filename: string) => boolean {

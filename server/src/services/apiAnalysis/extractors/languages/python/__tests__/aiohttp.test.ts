@@ -53,7 +53,6 @@ app.router.add_route("DELETE", "/users/{id}", get_user)
     expect(result.surfaces).toHaveLength(1)
 
     const surface = result.surfaces[0]
-    expect(surface.framework).toBe('aiohttp')
 
     const getUsers = surface.endpoints.find((e) => e.httpMethod === 'GET' && e.path === '/users')
     expect(getUsers).toBeDefined()
@@ -63,7 +62,7 @@ app.router.add_route("DELETE", "/users/{id}", get_user)
 
     const getUserById = surface.endpoints.find((e) => e.path === '/users/{id}' && e.httpMethod === 'GET')
     expect(getUserById?.parameters[0].name).toBe('id')
-    expect(getUserById?.parameters[0].in).toBe('path')
+    expect(getUserById?.parameters[0].location).toBe('path')
 
     const deleteUser = surface.endpoints.find((e) => e.httpMethod === 'DELETE')
     expect(deleteUser).toBeDefined()

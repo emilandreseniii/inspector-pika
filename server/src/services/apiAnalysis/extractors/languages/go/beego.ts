@@ -80,12 +80,12 @@ function parseBeegoFile(content: string, file: string): RawApiSurface | null {
         // Parse method mapping: "get:GetAll;post:Create"
         const methods = parseBeegoMethods(methodsStr)
         for (const method of methods) {
-          endpoints.push({ httpMethod: method, path, parameters: params })
+          endpoints.push({ httpMethod: method, path, parameters: params, tags: [], sourceFile: file })
         }
       } else {
         // Default: controller handles all HTTP methods via Get/Post/etc methods
         for (const method of DEFAULT_METHODS) {
-          endpoints.push({ httpMethod: method, path, parameters: params })
+          endpoints.push({ httpMethod: method, path, parameters: params, tags: [], sourceFile: file })
         }
       }
       continue
@@ -97,7 +97,7 @@ function parseBeegoFile(content: string, file: string): RawApiSurface | null {
       const path = nsRouterMatch[1]
       const params = extractPathParams(path)
       for (const method of DEFAULT_METHODS) {
-        endpoints.push({ httpMethod: method, path, parameters: params })
+        endpoints.push({ httpMethod: method, path, parameters: params, tags: [], sourceFile: file })
       }
     }
   }
@@ -106,9 +106,9 @@ function parseBeegoFile(content: string, file: string): RawApiSurface | null {
 
   return {
     name: file.split('/').pop()?.replace(/\.go$/, '') ?? file,
-    file,
-    framework: 'beego',
+    apiStyle: 'http',
     endpoints,
+    sourceFile: file,
   }
 }
 
@@ -129,7 +129,7 @@ function extractPathParams(path: string): RawApiParameter[] {
   const params: RawApiParameter[] = []
   // Beego uses :param syntax
   for (const m of path.matchAll(/:([a-zA-Z_]\w*)/g)) {
-    params.push({ name: m[1], in: 'path', required: true })
+    params.push({ name: m[1], location: 'path', required: true })
   }
   return params
 }

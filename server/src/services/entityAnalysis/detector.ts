@@ -55,6 +55,15 @@ export async function detectApproaches(
   if (detectedLanguages.has('Kotlin')) {
     detectorPromises.push(detectKotlinApproaches(sourceDir))
   }
+  if (detectedLanguages.has('Scala')) {
+    detectorPromises.push(detectScalaApproaches(sourceDir))
+  }
+  if (detectedLanguages.has('Elixir')) {
+    detectorPromises.push(detectElixirApproaches(sourceDir))
+  }
+  if (detectedLanguages.has('Swift')) {
+    detectorPromises.push(detectSwiftApproaches(sourceDir))
+  }
 
   const results = await Promise.allSettled(detectorPromises)
   for (const result of results) {
@@ -390,6 +399,18 @@ async function detectPhpApproaches(sourceDir: string): Promise<DetectedApproach[
   if (/doctrine\/orm/i.test(composerContent)) {
     approaches.push({ language: 'PHP', approach: 'doctrine', confidence: 'high', signals: ["Tier A: Doctrine ORM found in composer.json"] })
   }
+  if (/cycle\/orm|cycle\/annotated/i.test(composerContent)) {
+    approaches.push({ language: 'PHP', approach: 'cycle_orm', confidence: 'high', signals: ["Tier A: cycle/orm or cycle/annotated found in composer.json"] })
+  }
+  if (/propel\/propel/i.test(composerContent)) {
+    approaches.push({ language: 'PHP', approach: 'propel', confidence: 'high', signals: ["Tier A: propel/propel found in composer.json"] })
+  } else {
+    // Tier B: look for schema.xml files (classic Propel project signal)
+    const schemaFiles = await globCount(sourceDir, '**/schema.xml')
+    if (schemaFiles > 0) {
+      approaches.push({ language: 'PHP', approach: 'propel', confidence: 'medium', signals: [`Tier B: ${schemaFiles} schema.xml file(s) found`] })
+    }
+  }
 
   return approaches
 }
@@ -554,6 +575,79 @@ async function globFiles(sourceDir: string, pattern: string): Promise<string[]> 
 
   await walk(sourceDir)
   return results
+}
+
+// ---- Scala detector ----
+
+async function detectScalaApproaches(sourceDir: string): Promise<DetectedApproach[]> {
+  const approaches: DetectedApproach[] = []
+  const buildContent = await readSafe(join(sourceDir, 'build.sbt')) ?? ''
+
+  if (/slick/.test(buildContent)) {
+    approaches.push({ language: 'Scala', approach: 'slick', confidence: 'high', signals: ['Tier A: slick found in build.sbt'] })
+  } else {
+    const slickHits = await grepDir(sourceDir, '**/*.scala', /extends\s+Table\s*\[/, 3)
+    if (slickHits > 0) {
+      approaches.push({ language: 'Scala', approach: 'slick', confidence: 'medium', signals: ['Tier C: Table[T] subclass found in .scala file'] })
+    }
+  }
+
+  if (/doobie/.test(buildContent)) {
+    approaches.push({ language: 'Scala', approach: 'doobie', confidence: 'high', signals: ['Tier A: doobie found in build.sbt'] })
+  }
+
+  if (/quill/.test(buildContent)) {
+    approaches.push({ language: 'Scala', approach: 'quill', confidence: 'high', signals: ['Tier A: quill found in build.sbt'] })
+  }
+
+  return approaches
+}
+
+// ---- Elixir detector ----
+
+async function detectElixirApproaches(sourceDir: string): Promise<DetectedApproach[]> {
+  const approaches: DetectedApproach[] = []
+  const mixContent = await readSafe(join(sourceDir, 'mix.exs')) ?? ''
+
+  if (/:ecto\b/.test(mixContent)) {
+    approaches.push({ language: 'Elixir', approach: 'ecto', confidence: 'high', signals: ['Tier A: :ecto found in mix.exs'] })
+  } else {
+    const ectoHits = await grepDir(sourceDir, '**/*.ex', /schema\s+"[^"]+"\s+do|use\s+Ecto\.Schema/, 3)
+    if (ectoHits > 0) {
+      approaches.push({ language: 'Elixir', approach: 'ecto', confidence: 'medium', signals: ['Tier C: Ecto schema block found'] })
+    }
+  }
+
+  return approaches
+}
+
+// ---- Swift detector ----
+
+async function detectSwiftApproaches(sourceDir: string): Promise<DetectedApproach[]> {
+  const approaches: DetectedApproach[] = []
+  const packageContent = await readSafe(join(sourceDir, 'Package.swift')) ?? ''
+
+  // Fluent (Vapor ORM)
+  if (/vapor\/fluent|fluent-kit/.test(packageContent)) {
+    approaches.push({ language: 'Swift', approach: 'fluent', confidence: 'high', signals: ['Tier A: fluent found in Package.swift'] })
+  } else {
+    const fluentHits = await grepDir(sourceDir, '**/*.swift', /final\s+class\s+\w+\s*:\s*Model|@ID\s*\(|@Field\s*\(/, 3)
+    if (fluentHits > 0) {
+      approaches.push({ language: 'Swift', approach: 'fluent', confidence: 'medium', signals: ['Tier C: Fluent Model found in .swift file'] })
+    }
+  }
+
+  // GRDB
+  if (/groue\/grdb|GRDB/.test(packageContent)) {
+    approaches.push({ language: 'Swift', approach: 'grdb', confidence: 'high', signals: ['Tier A: GRDB found in Package.swift'] })
+  } else {
+    const grdbHits = await grepDir(sourceDir, '**/*.swift', /FetchableRecord|PersistableRecord|DatabaseValueConvertible/, 3)
+    if (grdbHits > 0) {
+      approaches.push({ language: 'Swift', approach: 'grdb', confidence: 'medium', signals: ['Tier C: FetchableRecord/PersistableRecord found in .swift file'] })
+    }
+  }
+
+  return approaches
 }
 
 async function grepDir(sourceDir: string, pattern: string, regex: RegExp, limit: number): Promise<number> {

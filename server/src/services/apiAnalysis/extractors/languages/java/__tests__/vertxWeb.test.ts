@@ -55,7 +55,6 @@ public class MainVerticle extends AbstractVerticle {
     expect(result.surfaces).toHaveLength(1)
 
     const surface = result.surfaces[0]
-    expect(surface.framework).toBe('vertx_web')
 
     const getUsers = surface.endpoints.find((e) => e.httpMethod === 'GET' && e.path === '/users')
     expect(getUsers).toBeDefined()

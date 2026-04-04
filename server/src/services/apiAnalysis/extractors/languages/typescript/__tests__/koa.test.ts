@@ -59,7 +59,6 @@ export default router
     expect(result.surfaces).toHaveLength(1)
 
     const surface = result.surfaces[0]
-    expect(surface.framework).toBe('koa')
     expect(surface.endpoints).toHaveLength(4)
 
     const getAll = surface.endpoints.find((e) => e.httpMethod === 'GET' && e.path === '/users')
@@ -71,7 +70,7 @@ export default router
     const getById = surface.endpoints.find((e) => e.path === '/users/:id' && e.httpMethod === 'GET')
     expect(getById?.parameters).toHaveLength(1)
     expect(getById?.parameters[0].name).toBe('id')
-    expect(getById?.parameters[0].in).toBe('path')
+    expect(getById?.parameters[0].location).toBe('path')
   })
 
   it('handles @koa/router import', async () => {

@@ -67,7 +67,7 @@ function parseVertxFile(content: string, file: string): RawApiSurface | null {
       const method = METHOD_MAP[methodMatch[1].toLowerCase()]
       const path = methodMatch[2]
       if (method) {
-        endpoints.push({ httpMethod: method, path, parameters: extractPathParams(path) })
+        endpoints.push({ httpMethod: method, path, parameters: extractPathParams(path), tags: [], sourceFile: file })
         continue
       }
     }
@@ -78,7 +78,7 @@ function parseVertxFile(content: string, file: string): RawApiSurface | null {
       const path = routeMatch[1]
       const params = extractPathParams(path)
       for (const method of ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] as HttpMethod[]) {
-        endpoints.push({ httpMethod: method, path, parameters: params })
+        endpoints.push({ httpMethod: method, path, parameters: params, tags: [], sourceFile: file })
       }
       continue
     }
@@ -89,7 +89,7 @@ function parseVertxFile(content: string, file: string): RawApiSurface | null {
       const method = httpMethodMatch[1] as HttpMethod
       const path = httpMethodMatch[2]
       if (Object.values(METHOD_MAP).includes(method)) {
-        endpoints.push({ httpMethod: method, path, parameters: extractPathParams(path) })
+        endpoints.push({ httpMethod: method, path, parameters: extractPathParams(path), tags: [], sourceFile: file })
       }
     }
   }
@@ -98,9 +98,9 @@ function parseVertxFile(content: string, file: string): RawApiSurface | null {
 
   return {
     name: file.split('/').pop()?.replace(/\.(java|kt)$/, '') ?? file,
-    file,
-    framework: 'vertx_web',
+    apiStyle: 'http',
     endpoints,
+    sourceFile: file,
   }
 }
 
@@ -110,7 +110,7 @@ function extractPathParams(path: string): RawApiParameter[] {
   const params: RawApiParameter[] = []
   // Vert.x uses :param syntax
   for (const m of path.matchAll(/:([a-zA-Z_]\w*)/g)) {
-    params.push({ name: m[1], in: 'path', required: true })
+    params.push({ name: m[1], location: 'path', required: true })
   }
   return params
 }

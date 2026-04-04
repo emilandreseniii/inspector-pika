@@ -76,10 +76,10 @@ function parseSanicFile(content: string, file: string): RawApiSurface | null {
       const methodsMatch = trimmed.match(ROUTE_METHODS_RE)
       const methods = methodsMatch ? parseMethodsList(methodsMatch[1]) : (['GET'] as HttpMethod[])
       for (const method of methods) {
-        endpoints.push({ httpMethod: method, path, parameters: params })
+        endpoints.push({ httpMethod: method, path, parameters: params, tags: [], sourceFile: file })
       }
     } else {
-      endpoints.push({ httpMethod: methodStr.toUpperCase() as HttpMethod, path, parameters: params })
+      endpoints.push({ httpMethod: methodStr.toUpperCase() as HttpMethod, path, parameters: params, tags: [], sourceFile: file })
     }
   }
 
@@ -87,9 +87,9 @@ function parseSanicFile(content: string, file: string): RawApiSurface | null {
 
   return {
     name: file.split('/').pop()?.replace(/\.py$/, '') ?? file,
-    file,
-    framework: 'sanic',
+    apiStyle: 'http',
     endpoints,
+    sourceFile: file,
   }
 }
 
@@ -117,7 +117,7 @@ function extractPathParams(path: string): RawApiParameter[] {
   const params: RawApiParameter[] = []
   // Sanic uses <param> and <param:type> syntax
   for (const m of path.matchAll(/<([^>:]+)(?::[^>]*)?>\/*/g)) {
-    params.push({ name: m[1], in: 'path', required: true })
+    params.push({ name: m[1], location: 'path', required: true })
   }
   return params
 }

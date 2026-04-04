@@ -63,7 +63,7 @@ function parseAiohttpFile(content: string, file: string): RawApiSurface | null {
     if (addMethodMatch) {
       const method = addMethodMatch[1].toUpperCase() as HttpMethod
       const path = addMethodMatch[2]
-      endpoints.push({ httpMethod: method, path, parameters: extractPathParams(path) })
+      endpoints.push({ httpMethod: method, path, parameters: extractPathParams(path), tags: [], sourceFile: file })
       continue
     }
 
@@ -73,7 +73,7 @@ function parseAiohttpFile(content: string, file: string): RawApiSurface | null {
       const method = addRouteMatch[1] as HttpMethod
       const path = addRouteMatch[2]
       if (HTTP_METHODS.includes(method)) {
-        endpoints.push({ httpMethod: method, path, parameters: extractPathParams(path) })
+        endpoints.push({ httpMethod: method, path, parameters: extractPathParams(path), tags: [], sourceFile: file })
       }
       continue
     }
@@ -83,7 +83,7 @@ function parseAiohttpFile(content: string, file: string): RawApiSurface | null {
     if (webMethodMatch) {
       const method = webMethodMatch[1].toUpperCase() as HttpMethod
       const path = webMethodMatch[2]
-      endpoints.push({ httpMethod: method, path, parameters: extractPathParams(path) })
+      endpoints.push({ httpMethod: method, path, parameters: extractPathParams(path), tags: [], sourceFile: file })
       continue
     }
 
@@ -93,7 +93,7 @@ function parseAiohttpFile(content: string, file: string): RawApiSurface | null {
       if (decoratorMatch) {
         const method = decoratorMatch[1].toUpperCase() as HttpMethod
         const path = decoratorMatch[2]
-        endpoints.push({ httpMethod: method, path, parameters: extractPathParams(path) })
+        endpoints.push({ httpMethod: method, path, parameters: extractPathParams(path), tags: [], sourceFile: file })
       }
     }
   }
@@ -102,9 +102,9 @@ function parseAiohttpFile(content: string, file: string): RawApiSurface | null {
 
   return {
     name: file.split('/').pop()?.replace(/\.py$/, '') ?? file,
-    file,
-    framework: 'aiohttp',
+    apiStyle: 'http',
     endpoints,
+    sourceFile: file,
   }
 }
 
@@ -114,7 +114,7 @@ function extractPathParams(path: string): RawApiParameter[] {
   const params: RawApiParameter[] = []
   // aiohttp uses {param} syntax
   for (const m of path.matchAll(/\{([^}]+)\}/g)) {
-    params.push({ name: m[1], in: 'path', required: true })
+    params.push({ name: m[1], location: 'path', required: true })
   }
   return params
 }

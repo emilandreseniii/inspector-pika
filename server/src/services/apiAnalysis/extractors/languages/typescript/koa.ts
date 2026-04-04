@@ -82,7 +82,7 @@ function parseKoaFile(content: string, file: string): RawApiSurface | null {
 
     const pathParams: RawApiParameter[] = extractPathParams(rawPath).map((name) => ({
       name,
-      in: 'path' as const,
+      location: 'path' as const,
       required: true,
     }))
 
@@ -90,11 +90,13 @@ function parseKoaFile(content: string, file: string): RawApiSurface | null {
       httpMethod: methods[0],
       path: rawPath,
       parameters: pathParams,
+      tags: [],
+      sourceFile: file,
     })
 
     // For 'all', emit remaining methods
     for (let m = 1; m < methods.length; m++) {
-      endpoints.push({ httpMethod: methods[m], path: rawPath, parameters: pathParams })
+      endpoints.push({ httpMethod: methods[m], path: rawPath, parameters: pathParams, tags: [], sourceFile: file })
     }
   }
 
@@ -102,9 +104,9 @@ function parseKoaFile(content: string, file: string): RawApiSurface | null {
 
   return {
     name: file.split('/').pop()?.replace(/\.[^.]+$/, '') ?? file,
-    file,
-    framework: 'koa',
+    apiStyle: 'http',
     endpoints,
+    sourceFile: file,
   }
 }
 

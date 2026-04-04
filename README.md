@@ -2,6 +2,8 @@
 
 <p align="center">
   <img src="inspector-pika.png" alt="Inspector Pika logo" width="180" />
+  <br/>
+  <em>"Elementary, my dear Wombat..."</em>
 </p>
 
 A GitHub repository analysis tool that helps you understand any repo at a glance.
@@ -11,7 +13,8 @@ A GitHub repository analysis tool that helps you understand any repo at a glance
 - **Repo exploration** — browse and search repositories for a GitHub org, with filtering and pagination
 - **Language detection** — identify programming languages using [enry](https://github.com/go-enry/enry)
 - **Dependency analysis** — detect all packages a repo depends on using [ORT](https://github.com/oss-review-toolkit/ort) v83
-- **Entity analysis** — detect data entities (tables, models) from JPA/Hibernate annotations, MyBatis XML mappers, jOOQ generated code, Flyway/Liquibase migrations, and raw SQL DDL
+- **Entity analysis** — detect data models (tables, entities, schemas) across 30+ ORM and database frameworks spanning Java, Python, Go, TypeScript, Ruby, PHP, Rust, Elixir, Scala, Swift, and C#
+- **API analysis** — detect API surfaces (HTTP endpoints, gRPC services, GraphQL schemas) across 40+ frameworks spanning the same language set
 - **Job queue** — long-running analyses run as background jobs with live status polling; each section of the repository page shows when it was last analyzed and an Analyze button
 - **Job management** — view job details, inspect input/result/error output, and cancel stuck or unwanted jobs
 - **Persistent cache** — explored repos and analysis results are stored in PostgreSQL
@@ -80,6 +83,35 @@ inspector-pika/
   tools/           # Downloaded analysis tools (ORT, enry) — not committed to git
   data/            # Cloned repos and analysis output — not committed to git
   e2e/             # Playwright end-to-end tests
+```
+
+## Testing
+
+### Unit tests
+
+Unit tests live in the `server` workspace and use [Vitest](https://vitest.dev). They cover entity and API extractor logic with in-memory mocks (no running server or database required).
+
+```bash
+# Run all unit tests once
+npm run test:unit
+
+# Run in watch mode (re-runs on file changes)
+npm run test:watch --workspace=server
+```
+
+### End-to-end tests
+
+E2E tests use [Playwright](https://playwright.dev) and require the full app stack to be running.
+
+```bash
+# Start the app first
+npm run dev
+
+# Run E2E tests (in a separate terminal)
+npm test
+
+# Open the Playwright UI for interactive debugging
+npm run test:ui
 ```
 
 ## Screenshots

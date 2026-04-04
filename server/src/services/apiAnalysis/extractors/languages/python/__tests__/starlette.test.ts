@@ -56,7 +56,6 @@ app = Starlette(routes=routes)
     expect(result.surfaces).toHaveLength(1)
 
     const surface = result.surfaces[0]
-    expect(surface.framework).toBe('starlette')
 
     const getUsers = surface.endpoints.find((e) => e.httpMethod === 'GET' && e.path === '/users')
     expect(getUsers).toBeDefined()
@@ -66,7 +65,7 @@ app = Starlette(routes=routes)
 
     const getUserById = surface.endpoints.find((e) => e.path === '/users/{id}' && e.httpMethod === 'GET')
     expect(getUserById?.parameters[0].name).toBe('id')
-    expect(getUserById?.parameters[0].in).toBe('path')
+    expect(getUserById?.parameters[0].location).toBe('path')
 
     const deleteUser = surface.endpoints.find((e) => e.path === '/users/{id}' && e.httpMethod === 'DELETE')
     expect(deleteUser).toBeDefined()

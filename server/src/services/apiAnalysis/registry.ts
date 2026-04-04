@@ -36,12 +36,23 @@ import { GrapeExtractor } from './extractors/languages/ruby/grape'
 import { SinatraExtractor } from './extractors/languages/ruby/sinatra'
 import { AspNetCoreExtractor } from './extractors/languages/csharp/aspNetCore'
 import { MinimalApiExtractor } from './extractors/languages/csharp/minimalApi'
+import { CsharpGrpcExtractor } from './extractors/languages/csharp/grpc'
 import { AxumExtractor } from './extractors/languages/rust/axum'
 import { ActixWebExtractor } from './extractors/languages/rust/actixWeb'
 import { RocketExtractor } from './extractors/languages/rust/rocket'
+import { WarpExtractor } from './extractors/languages/rust/warp'
+import { PoemExtractor } from './extractors/languages/rust/poem'
+import { PlayExtractor } from './extractors/languages/scala/play'
+import { AkkaHttpExtractor } from './extractors/languages/scala/akkaHttp'
+import { Http4sExtractor } from './extractors/languages/scala/http4s'
+import { PhoenixExtractor } from './extractors/languages/elixir/phoenix'
+import { PlugRouterExtractor } from './extractors/languages/elixir/plugRouter'
+import { VaporExtractor } from './extractors/languages/swift/vapor'
+import { HummingbirdExtractor } from './extractors/languages/swift/hummingbird'
 import { LaravelExtractor } from './extractors/languages/php/laravel'
 import { SymfonyExtractor } from './extractors/languages/php/symfony'
 import { SlimExtractor } from './extractors/languages/php/slim'
+import { LumenExtractor } from './extractors/languages/php/lumen'
 
 type ApiExtractorClass = new (ctx: ApiExtractorContext) => BaseApiExtractor
 
@@ -106,16 +117,33 @@ register('Ruby', 'sinatra',      SinatraExtractor)
 // ── C# ────────────────────────────────────────────────────────────────────────
 register('C#', 'aspnet_core',  AspNetCoreExtractor)
 register('C#', 'minimal_api', MinimalApiExtractor)
+register('C#', 'grpc',        CsharpGrpcExtractor)
 
 // ── Rust ──────────────────────────────────────────────────────────────────────
 register('Rust', 'axum',      AxumExtractor)
 register('Rust', 'actix_web', ActixWebExtractor)
 register('Rust', 'rocket',    RocketExtractor)
+register('Rust', 'warp',      WarpExtractor)
+register('Rust', 'poem',      PoemExtractor)
 
 // ── PHP ───────────────────────────────────────────────────────────────────────
 register('PHP', 'laravel', LaravelExtractor)
 register('PHP', 'symfony', SymfonyExtractor)
 register('PHP', 'slim',    SlimExtractor)
+register('PHP', 'lumen',   LumenExtractor)
+
+// ── Scala ─────────────────────────────────────────────────────────────────────
+register('Scala', 'play',      PlayExtractor)
+register('Scala', 'akka_http', AkkaHttpExtractor)
+register('Scala', 'http4s',    Http4sExtractor)
+
+// ── Elixir ────────────────────────────────────────────────────────────────────
+register('Elixir', 'phoenix',     PhoenixExtractor)
+register('Elixir', 'plug_router', PlugRouterExtractor)
+
+// ── Swift ─────────────────────────────────────────────────────────────────────
+register('Swift', 'vapor',       VaporExtractor)
+register('Swift', 'hummingbird', HummingbirdExtractor)
 
 // ── Cross-language ────────────────────────────────────────────────────────────
 register('cross-language', 'grpc_proto',      GrpcProtoExtractor)

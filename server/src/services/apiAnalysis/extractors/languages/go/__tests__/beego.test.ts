@@ -5,7 +5,7 @@ import type { ApiExtractorContext } from '../../../base'
 function makeExtractor(files: Record<string, string>): BeegoExtractor {
   const ctx: ApiExtractorContext = {
     sourceDir: '/repo',
-    approach: { language: 'Go', approach: 'beego', confidence: 'high', signals: [] },
+    approach: { language: 'Go', approach: 'beego', apiStyle: 'http', confidence: 'high', signals: [] },
     repoFullName: 'test/repo',
   }
   const extractor = new BeegoExtractor(ctx)
@@ -50,7 +50,6 @@ func init() {
     expect(result.surfaces).toHaveLength(1)
 
     const surface = result.surfaces[0]
-    expect(surface.framework).toBe('beego')
 
     // /users should have all default methods
     const getUsersAll = surface.endpoints.filter((e) => e.path === '/users')

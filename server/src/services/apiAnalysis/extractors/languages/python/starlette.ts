@@ -67,6 +67,8 @@ function parseStarletteFile(content: string, file: string): RawApiSurface | null
         httpMethod: method,
         path,
         parameters: params,
+        tags: [],
+        sourceFile: file,
       })
     }
   }
@@ -81,6 +83,8 @@ function parseStarletteFile(content: string, file: string): RawApiSurface | null
       httpMethod: 'GET',
       path,
       parameters: extractPathParams(path),
+      tags: [],
+      sourceFile: file,
     })
   }
 
@@ -91,7 +95,7 @@ function parseStarletteFile(content: string, file: string): RawApiSurface | null
     const methods = parseMethodsList(m[2])
     const params = extractPathParams(path)
     for (const method of methods) {
-      endpoints.push({ httpMethod: method, path, parameters: params })
+      endpoints.push({ httpMethod: method, path, parameters: params, tags: [], sourceFile: file })
     }
   }
 
@@ -99,9 +103,9 @@ function parseStarletteFile(content: string, file: string): RawApiSurface | null
 
   return {
     name: file.split('/').pop()?.replace(/\.py$/, '') ?? file,
-    file,
-    framework: 'starlette',
+    apiStyle: 'http',
     endpoints,
+    sourceFile: file,
   }
 }
 
@@ -120,7 +124,7 @@ function extractPathParams(path: string): RawApiParameter[] {
   const params: RawApiParameter[] = []
   // Starlette uses {param} syntax
   for (const m of path.matchAll(/\{([^}:]+)(?::[^}]*)?\}/g)) {
-    params.push({ name: m[1], in: 'path', required: true })
+    params.push({ name: m[1], location: 'path', required: true })
   }
   return params
 }

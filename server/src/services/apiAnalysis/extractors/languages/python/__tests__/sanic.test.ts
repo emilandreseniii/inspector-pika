@@ -57,7 +57,6 @@ async def update_or_delete_user(request, id):
     expect(result.surfaces).toHaveLength(1)
 
     const surface = result.surfaces[0]
-    expect(surface.framework).toBe('sanic')
 
     const getUsers = surface.endpoints.find((e) => e.httpMethod === 'GET' && e.path === '/users')
     expect(getUsers).toBeDefined()
@@ -67,7 +66,7 @@ async def update_or_delete_user(request, id):
 
     const getById = surface.endpoints.find((e) => e.httpMethod === 'GET' && e.path === '/users/<id:int>')
     expect(getById?.parameters[0].name).toBe('id')
-    expect(getById?.parameters[0].in).toBe('path')
+    expect(getById?.parameters[0].location).toBe('path')
 
     const put = surface.endpoints.find((e) => e.httpMethod === 'PUT')
     expect(put).toBeDefined()

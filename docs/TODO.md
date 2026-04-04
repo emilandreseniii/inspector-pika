@@ -115,7 +115,7 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 - [x] **ASP.NET Core** — detect `[ApiController]`, `[HttpGet]`, `[HttpPost]`, `[Route]`; similar shape to Spring MVC extractor
 - [x] **Hot Chocolate / GraphQL.NET** — detect GraphQL resolver class patterns
 - [x] **Minimal APIs (.NET 6+)** — detect `app.MapGet/MapPost/MapPut/MapDelete(path, handler)` in `Program.cs` / top-level statements
-- [ ] **gRPC (Grpc.AspNetCore)** — detect `public override … MethodName(Request req, ServerCallContext ctx)` in classes that inherit generated `*Base` service stubs
+- [x] **gRPC (Grpc.AspNetCore)** — detect `public override … MethodName(Request req, ServerCallContext ctx)` in classes that inherit generated `*Base` service stubs
 
 ### Entity Extractors
 - [x] **EF Core** — detect `DbContext`, `DbSet<T>`, `[Table]`, `[Column]`, `OnModelCreating` fluent API
@@ -131,8 +131,8 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 - [x] **Actix-web** — detect `web::get().to(…)`, `#[get("…")]`, `App::new().service(…)`
 - [x] **tonic** — detect gRPC service trait implementations; defer to proto extractor for schema
 - [x] **Rocket** — detect `#[get("…")]`, `#[post("…")]` proc-macro attributes from the `rocket` crate; extract path params `<param>` and query params `<param..>`
-- [ ] **warp** — detect `warp::path(…).and(warp::get()/post()/…)` filter chain compositions
-- [ ] **poem** — detect `#[handler]` attribute functions registered via `Route::new().at(path, get/post/…(handler))`
+- [x] **warp** — detect `warp::path(…).and(warp::get()/post()/…)` filter chain compositions
+- [x] **poem** — detect `#[handler]` attribute functions registered via `Route::new().at(path, get/post/…(handler))`
 
 ### Entity Extractors
 - [x] **Diesel** — parse `diesel::table!` macros and `schema.rs`; extract table and column definitions
@@ -147,13 +147,13 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 - [x] **Laravel** — parse `routes/api.php`; extract `Route::get/post/…`, resource controllers
 - [x] **Symfony** — detect `#[Route(…)]` attributes or `@Route` annotations on controller methods
 - [x] **Slim Framework** — detect `$app->get/post/put/delete/patch(path, callable)` and `RouteCollectorProxy` group routes
-- [ ] **Lumen** — detect `$router->get/post/put/delete/patch(path, …)` and `$router->group(…)` in `routes/web.php`
+- [x] **Lumen** — detect `$router->get/post/put/delete/patch(path, …)` and `$router->group(…)` in `routes/web.php`
 
 ### Entity Extractors
 - [x] **Eloquent** — detect `class Foo extends Model`, `protected $fillable`, `$casts`; parse migration `Schema::create` calls
 - [x] **Doctrine** — detect `#[Entity]`, `#[Column]`, `#[ORM\ManyToOne]` attributes
-- [ ] **Cycle ORM** — detect `#[Entity]`, `#[Column]` attributes from `cycle/annotated`; parse `schema/…` cycle schema definitions
-- [ ] **Propel** — parse `schema.xml` ORM definition files; extract `<table>`, `<column>`, `<foreign-key>` elements
+- [x] **Cycle ORM** — detect `#[Entity]`, `#[Column]` attributes from `cycle/annotated`; parse `schema/…` cycle schema definitions
+- [x] **Propel** — parse `schema.xml` ORM definition files; extract `<table>`, `<column>`, `<foreign-key>` elements
 
 ---
 
@@ -172,37 +172,37 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 ## Scala
 
 ### API Extractors
-- [ ] **Play Framework** — parse `conf/routes` file for `GET /path controller.Method` entries; detect `Action {…}` in controller files
-- [ ] **Akka HTTP** — detect `path(…) { get { complete {…} } }` directive DSL; `pathPrefix`, `pathEnd` nesting
-- [ ] **http4s** — detect `HttpRoutes.of { case GET -> Root / "path" => … }` partial function routing
+- [x] **Play Framework** — parse `conf/routes` file for `GET /path controller.Method` entries; detect `Action {…}` in controller files
+- [x] **Akka HTTP** — detect `path(…) { get { complete {…} } }` directive DSL; `pathPrefix`, `pathEnd` nesting
+- [x] **http4s** — detect `HttpRoutes.of { case GET -> Root / "path" => … }` partial function routing
 
 ### Entity Extractors
-- [ ] **Slick** — detect `class Foo(tag: Tag) extends Table[Bar](tag, "table_name")`, `def * = (…) <> (…)` projection
-- [ ] **Doobie** — detect `sql"SELECT …".query[Foo]` and `sql"INSERT …".update` fragments; extract result types
-- [ ] **Quill** — detect `ctx.run(query[Foo])`, `quote { query[Foo].filter(…) }` quoted DSL
+- [x] **Slick** — detect `class Foo(tag: Tag) extends Table[Bar](tag, "table_name")`, `def * = (…) <> (…)` projection
+- [x] **Doobie** — detect `sql"SELECT …".query[Foo]` and `sql"INSERT …".update` fragments; extract result types
+- [x] **Quill** — detect `ctx.run(query[Foo])`, `quote { query[Foo].filter(…) }` quoted DSL
 
 ---
 
 ## Elixir
 
 ### API Extractors
-- [ ] **Phoenix** — parse `lib/*_web/router.ex`; extract `get/post/put/patch/delete`, `resources`, `scope`, `pipeline` blocks
-- [ ] **Plug.Router** — detect `plug :match` / `match "/path" do` routing blocks in `Plug.Router` modules
+- [x] **Phoenix** — parse `lib/*_web/router.ex`; extract `get/post/put/patch/delete`, `resources`, `scope`, `pipeline` blocks
+- [x] **Plug.Router** — detect `plug :match` / `match "/path" do` routing blocks in `Plug.Router` modules
 
 ### Entity Extractors
-- [ ] **Ecto** — detect `schema "table_name" do … end` blocks; extract `field :name, :type` and `belongs_to/has_many/has_one/many_to_many` associations
+- [x] **Ecto** — detect `schema "table_name" do … end` blocks; extract `field :name, :type` and `belongs_to/has_many/has_one/many_to_many` associations
 
 ---
 
 ## Swift
 
 ### API Extractors
-- [ ] **Vapor** — detect `app.get("path") { req in … }`, `app.post(…)`, grouped routes via `app.grouped(…)`
-- [ ] **Hummingbird** — detect `app.router.get("/path") {…}`, `HBRouterGroup`
+- [x] **Vapor** — detect `app.get("path") { req in … }`, `app.post(…)`, grouped routes via `app.grouped(…)`
+- [x] **Hummingbird** — detect `app.router.get("/path") {…}`, `HBRouterGroup`
 
 ### Entity Extractors
-- [ ] **Fluent (Vapor ORM)** — detect `final class Foo: Model`, `@ID`, `@Field(key: "col")`, `@Parent`, `@Children` property wrappers
-- [ ] **GRDB** — detect `struct Foo: Codable, FetchableRecord, PersistableRecord`, `static let databaseTableName`
+- [x] **Fluent (Vapor ORM)** — detect `final class Foo: Model`, `@ID`, `@Field(key: "col")`, `@Parent`, `@Children` property wrappers
+- [x] **GRDB** — detect `struct Foo: Codable, FetchableRecord, PersistableRecord`, `static let databaseTableName`
 
 ---
 
