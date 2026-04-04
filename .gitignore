@@ -20,3 +20,6 @@ playwright-report/
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude Code local settings (machine-specific permissions)
+.claude/settings.local.json
