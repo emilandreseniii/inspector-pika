@@ -69,6 +69,11 @@ npm audit --audit-level=high
 
 # 4. Confirm no secrets or local config are staged
 git diff --cached --name-only | grep -E "\.env$|settings\.local\."
+
+# 5. Review README.md for accuracy
+#    Check that the feature list, tech stack, setup instructions, and
+#    environment variable table reflect the current state of the codebase.
+#    Update README.md if anything is stale or missing before committing.
 ```
 
 If any check fails, fix the issue before committing. Do **not** use `--no-verify` or skip checks.
