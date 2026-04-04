@@ -46,9 +46,9 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 - [x] **Hono** — detect `app.get/post/…` with Hono-style routing
 - [x] **Apollo Server / TypeGraphQL / Pothos** — detect GraphQL resolvers and schema definitions
 - [x] **gRPC-node / @grpc/grpc-js** — detect service implementations; defer to proto extractor for schema
-- [ ] **Koa** — detect `router.get/post/put/delete/patch` from `koa-router` / `@koa/router`; `ctx.path` and `ctx.method` in middleware
-- [ ] **tRPC** — detect `router.query/mutation/subscription`, `t.procedure.input(…).query/mutation`; extract input/output Zod schemas
-- [ ] **Next.js API routes** — detect `pages/api/**/*.ts` files with default export handlers; detect `app/api/**/route.ts` files with exported `GET`, `POST`, etc. functions (App Router)
+- [x] **Koa** — detect `router.get/post/put/delete/patch` from `koa-router` / `@koa/router`; `ctx.path` and `ctx.method` in middleware
+- [x] **tRPC** — detect `router.query/mutation/subscription`, `t.procedure.input(…).query/mutation`; extract input/output Zod schemas
+- [x] **Next.js API routes** — detect `pages/api/**/*.ts` files with default export handlers; detect `app/api/**/route.ts` files with exported `GET`, `POST`, etc. functions (App Router)
 
 ### Entity Extractors
 - [x] **Prisma** — parse `schema.prisma`: `model`, `@@map`, field types and attributes
@@ -165,7 +165,7 @@ Items are ordered by priority. Languages already implemented (Java, Python) come
 
 ### Entity Extractors
 - [x] **Exposed** — detect `object Foo : Table("table_name")` and `IntIdTable`/`LongIdTable`; parse `Column<T>` property definitions
-- [ ] **KTorm** — detect `object Foo : Table<Bar>("table_name")`, `val col = int("col_name").bindTo {…}` column definitions
+- [x] **KTorm** — detect `object Foo : Table<Bar>("table_name")`, `val col = int("col_name").bindTo {…}` column definitions
 
 ---
 

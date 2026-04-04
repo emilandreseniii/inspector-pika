@@ -342,6 +342,35 @@ async function detectJsApiApproaches(sourceDir: string): Promise<DetectedApiAppr
     approaches.push({ language: 'TypeScript', approach: 'hono', apiStyle: 'http', confidence: scoreConfidence(honoSignals), signals: honoSignals })
   }
 
+  // ── Koa ───────────────────────────────────────────────────────────────────
+  const koaSignals: string[] = []
+  if (/["']koa-router["']|["']@koa\/router["']/i.test(pkgContent)) koaSignals.push('Tier A: koa-router or @koa/router found in package.json')
+  const koaHits = await grepFirst(sourceDir, '**/*.{ts,js,mts,mjs}', /require\s*\(\s*['"](?:koa-router|@koa\/router)['"]|from\s+['"](?:koa-router|@koa\/router)['"]/, 3)
+  if (koaHits.length > 0) koaSignals.push(`Tier C: koa-router import found in ${koaHits[0]}`)
+  if (koaSignals.length > 0) {
+    approaches.push({ language: 'TypeScript', approach: 'koa', apiStyle: 'http', confidence: scoreConfidence(koaSignals), signals: koaSignals })
+  }
+
+  // ── Next.js API routes ────────────────────────────────────────────────────
+  const nextSignals: string[] = []
+  if (/["']next["']/i.test(pkgContent)) nextSignals.push('Tier A: next found in package.json')
+  const nextPagesHits = await grepFirst(sourceDir, 'pages/api/**/*.{ts,js,tsx,jsx}', /export\s+default/, 3)
+  if (nextPagesHits.length > 0) nextSignals.push(`Tier B: Next.js Pages Router API file found: ${nextPagesHits[0]}`)
+  const nextAppRouteHits = await grepFirst(sourceDir, 'app/**/route.{ts,js,tsx,jsx}', /export\s+(?:async\s+)?function\s+(?:GET|POST|PUT|DELETE|PATCH)/, 3)
+  if (nextAppRouteHits.length > 0) nextSignals.push(`Tier B: Next.js App Router route file found: ${nextAppRouteHits[0]}`)
+  if (nextSignals.length > 0) {
+    approaches.push({ language: 'TypeScript', approach: 'nextjs_api', apiStyle: 'http', confidence: scoreConfidence(nextSignals), signals: nextSignals })
+  }
+
+  // ── tRPC ──────────────────────────────────────────────────────────────────
+  const trpcSignals: string[] = []
+  if (/["']@trpc\/server["']/i.test(pkgContent)) trpcSignals.push('Tier A: @trpc/server found in package.json')
+  const trpcHits = await grepFirst(sourceDir, '**/*.{ts,js,mts,mjs}', /@trpc\/server/, 3)
+  if (trpcHits.length > 0) trpcSignals.push(`Tier C: @trpc/server import found in ${trpcHits[0]}`)
+  if (trpcSignals.length > 0) {
+    approaches.push({ language: 'TypeScript', approach: 'trpc', apiStyle: 'rpc', confidence: scoreConfidence(trpcSignals), signals: trpcSignals })
+  }
+
   // ── gRPC-node / @grpc/grpc-js ────────────────────────────────────────────
   const grpcNodeSignals: string[] = []
   if (/["']@grpc\/grpc-js["']|["']grpc["']/i.test(pkgContent)) {

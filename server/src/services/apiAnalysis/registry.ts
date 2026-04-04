@@ -17,6 +17,9 @@ import { ExpressExtractor } from './extractors/languages/typescript/express'
 import { NestJsExtractor } from './extractors/languages/typescript/nestjs'
 import { FastifyExtractor } from './extractors/languages/typescript/fastify'
 import { HonoExtractor } from './extractors/languages/typescript/hono'
+import { KoaExtractor } from './extractors/languages/typescript/koa'
+import { TrpcExtractor } from './extractors/languages/typescript/trpc'
+import { NextJsApiExtractor } from './extractors/languages/typescript/nextjs'
 import { GinExtractor } from './extractors/languages/go/gin'
 import { EchoExtractor } from './extractors/languages/go/echo'
 import { ChiExtractor } from './extractors/languages/go/chi'
@@ -71,6 +74,10 @@ register('TypeScript', 'fastify',  FastifyExtractor)
 register('JavaScript', 'fastify',  FastifyExtractor)
 register('TypeScript', 'hono',     HonoExtractor)
 register('JavaScript', 'hono',     HonoExtractor)
+register('TypeScript', 'koa',      KoaExtractor)
+register('JavaScript', 'koa',      KoaExtractor)
+register('TypeScript', 'trpc',       TrpcExtractor)
+register('TypeScript', 'nextjs_api', NextJsApiExtractor)
 
 // ── Go ────────────────────────────────────────────────────────────────────────
 register('Go', 'gin',      GinExtractor)

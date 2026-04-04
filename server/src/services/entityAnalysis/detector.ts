@@ -399,6 +399,15 @@ async function detectKotlinApproaches(sourceDir: string): Promise<DetectedApproa
     approaches.push({ language: 'Kotlin', approach: 'exposed', confidence: computeConfidence(exposedSignals), signals: exposedSignals })
   }
 
+  // KTorm
+  const ktormSignals: string[] = []
+  if (/ktorm/.test(buildContent)) ktormSignals.push("Tier A: KTorm dependency found in build.gradle")
+  const ktormCount = await grepDir(sourceDir, '**/*.kt', /:\s*Table\s*</, 20)
+  if (ktormCount > 0) ktormSignals.push(`Tier B: Table<T> object found in ${ktormCount} file(s)`)
+  if (ktormSignals.length > 0) {
+    approaches.push({ language: 'Kotlin', approach: 'ktorm', confidence: computeConfidence(ktormSignals), signals: ktormSignals })
+  }
+
   return approaches
 }
 
