@@ -26,7 +26,7 @@ Detection is fast (grep-based, no parsing) and runs over the cloned source direc
 
 **Output:** An array of `DetectedApproach` records, each identifying a language + framework/approach combination and a confidence level (`high`, `medium`, `low`).
 
-See [entity-detection-plan.md](./entity-detection-plan.md) for the full detection signal table and confidence scoring rules.
+See [entity-detection-plan.md](../design/entity-detection-plan.md) for the full detection signal table and confidence scoring rules.
 
 ### Phase 2: Extraction
 
@@ -34,7 +34,7 @@ For each detected approach with confidence >= `medium`, the system runs the corr
 
 Each extractor produces a list of `RawEntity` objects with their fields and relationships. The raw results from all extractors are then **normalized** into a common `EntityRecord` format and **deduplicated** — if two extractors find the same entity (e.g., a Prisma schema and a SQL migration file both define a `users` table), they are merged into one record with multiple source locations.
 
-See [entity-extractor-architecture.md](./entity-extractor-architecture.md) for the full module structure, interfaces, and extractor registry.
+See [entity-extractor-architecture.md](../design/entity-extractor-architecture.md) for the full module structure, interfaces, and extractor registry.
 
 ---
 
@@ -83,7 +83,7 @@ The results of entity analysis are stored in four new PostgreSQL tables added to
 
 The deduplication strategy ensures that the same logical entity found by multiple extractors produces only **one** `repo_entities` row, with the `primarySources` JSONB field listing all source locations that contributed to the record.
 
-See [entity-database-schema-plan.md](./entity-database-schema-plan.md) for the full Drizzle ORM schema definitions.
+See [entity-database-schema-plan.md](../design/entity-database-schema-plan.md) for the full Drizzle ORM schema definitions.
 
 ---
 
@@ -100,7 +100,7 @@ Key UI elements:
 
 The UI follows the same inline-styles React pattern used in the existing `RepositoryPage.tsx`, matching the visual design of the Languages and Packages sections.
 
-See [entity-ui-plan.md](./entity-ui-plan.md) for the full component hierarchy and state management plan.
+See [entity-ui-plan.md](../design/entity-ui-plan.md) for the full component hierarchy and state management plan.
 
 ---
 
@@ -114,7 +114,7 @@ Entity analysis runs as a new job type: `analyze_entities`. It follows the same 
 
 The job requires the repository to already be cloned (it reuses `cloneOrUpdate` from `ortAnalyzer.ts`). It also requires `repoLanguages` to be populated for best results; the `analyze_languages` job should run first, though it is not a hard prerequisite — cross-language approaches (SQL DDL, Protobuf, OpenAPI, GraphQL) will fire regardless.
 
-See [entity-job-plan.md](./entity-job-plan.md) for the full job execution flow, API additions, and error handling plan.
+See [entity-job-plan.md](../design/entity-job-plan.md) for the full job execution flow, API additions, and error handling plan.
 
 ---
 
@@ -122,11 +122,11 @@ See [entity-job-plan.md](./entity-job-plan.md) for the full job execution flow, 
 
 | Document | Description |
 |----------|-------------|
-| [entity-detection-plan.md](./entity-detection-plan.md) | Phase 1: signal tables, confidence scoring, detection module design |
-| [entity-extractor-architecture.md](./entity-extractor-architecture.md) | Phase 2: extractor module structure, interfaces, registry |
-| [entity-database-schema-plan.md](./entity-database-schema-plan.md) | New Drizzle ORM schema tables and index definitions |
-| [entity-job-plan.md](./entity-job-plan.md) | `analyze_entities` job type: flow, API endpoints, error handling |
-| [entity-ui-plan.md](./entity-ui-plan.md) | React component hierarchy and UI state plan |
+| [entity-detection-plan.md](../design/entity-detection-plan.md) | Phase 1: signal tables, confidence scoring, detection module design |
+| [entity-extractor-architecture.md](../design/entity-extractor-architecture.md) | Phase 2: extractor module structure, interfaces, registry |
+| [entity-database-schema-plan.md](../design/entity-database-schema-plan.md) | New Drizzle ORM schema tables and index definitions |
+| [entity-job-plan.md](../design/entity-job-plan.md) | `analyze_entities` job type: flow, API endpoints, error handling |
+| [entity-ui-plan.md](../design/entity-ui-plan.md) | React component hierarchy and UI state plan |
 | [languages/python/data-entity-storage-methods.md](./languages/python/data-entity-storage-methods.md) | Detailed Python framework inventory |
 | [languages/javascript/data-entity-storage-methods.md](./languages/javascript/data-entity-storage-methods.md) | Detailed JavaScript framework inventory |
 | [languages/typescript/data-entity-storage-methods.md](./languages/typescript/data-entity-storage-methods.md) | Detailed TypeScript framework inventory |

@@ -26,7 +26,7 @@ Detection is fast (grep-based, no parsing) and runs over the cloned source direc
 
 **Output:** An array of `DetectedApiApproach` records, each identifying a language + framework/approach combination and a confidence level (`high`, `medium`, `low`).
 
-See [api-detection-plan.md](./api-detection-plan.md) for the full detection signal table and confidence scoring rules.
+See [api-detection-plan.md](../design/api-detection-plan.md) for the full detection signal table and confidence scoring rules.
 
 ### Phase 2: Extraction
 
@@ -34,7 +34,7 @@ For each detected approach with confidence >= `medium`, the system runs the corr
 
 Each extractor produces a list of `RawApi` objects containing `RawEndpoint` arrays. The raw results from all extractors are **normalized** into a common `ApiRecord` format and **deduplicated** — if two extractors find overlapping routes (e.g., an OpenAPI spec and Spring annotations describing the same paths), they are merged with multiple source locations.
 
-See [api-extractor-architecture.md](./api-extractor-architecture.md) for the full module structure, interfaces, and extractor registry.
+See [api-extractor-architecture.md](../design/api-extractor-architecture.md) for the full module structure, interfaces, and extractor registry.
 
 ---
 
@@ -112,7 +112,7 @@ API analysis results are stored in four new PostgreSQL tables:
 | `repo_api_endpoints` | One row per operation (HTTP endpoint, GraphQL field, RPC method) |
 | `repo_api_parameters` | One row per parameter or field on an endpoint |
 
-See [api-database-schema-plan.md](./api-database-schema-plan.md) for the full Drizzle ORM schema definitions.
+See [api-database-schema-plan.md](../design/api-database-schema-plan.md) for the full Drizzle ORM schema definitions.
 
 ---
 
@@ -142,7 +142,7 @@ API analysis results appear on the **Repository page** in the Inspector Pika UI,
 - Message type definitions expandable (fields with types)
 - Protocol badge (gRPC, Thrift, etc.)
 
-See [api-ui-plan.md](./api-ui-plan.md) for the full component hierarchy and state management plan.
+See [api-ui-plan.md](../design/api-ui-plan.md) for the full component hierarchy and state management plan.
 
 ---
 
@@ -156,7 +156,7 @@ API analysis runs as a new job type: `analyze_apis`. It follows the same pattern
 
 The job requires the repository to already be cloned. The `analyze_languages` job should run first for best results (enables language-gated detection), though cross-language approaches (OpenAPI, proto files, GraphQL schemas) fire regardless.
 
-See [api-job-plan.md](./api-job-plan.md) for the full job execution flow, API additions, and error handling plan.
+See [api-job-plan.md](../design/api-job-plan.md) for the full job execution flow, API additions, and error handling plan.
 
 ---
 
@@ -164,10 +164,10 @@ See [api-job-plan.md](./api-job-plan.md) for the full job execution flow, API ad
 
 | Document | Description |
 |----------|-------------|
-| [api-detection-plan.md](./api-detection-plan.md) | Phase 1: signal tables, confidence scoring, detection module design |
-| [api-extractor-architecture.md](./api-extractor-architecture.md) | Phase 2: extractor module structure, interfaces, registry |
-| [api-database-schema-plan.md](./api-database-schema-plan.md) | New Drizzle ORM schema tables and index definitions |
-| [api-job-plan.md](./api-job-plan.md) | `analyze_apis` job type: flow, API endpoints, error handling |
-| [api-ui-plan.md](./api-ui-plan.md) | React component hierarchy and UI state plan |
+| [api-detection-plan.md](../design/api-detection-plan.md) | Phase 1: signal tables, confidence scoring, detection module design |
+| [api-extractor-architecture.md](../design/api-extractor-architecture.md) | Phase 2: extractor module structure, interfaces, registry |
+| [api-database-schema-plan.md](../design/api-database-schema-plan.md) | New Drizzle ORM schema tables and index definitions |
+| [api-job-plan.md](../design/api-job-plan.md) | `analyze_apis` job type: flow, API endpoints, error handling |
+| [api-ui-plan.md](../design/api-ui-plan.md) | React component hierarchy and UI state plan |
 | [languages/java/api-definition-methods.md](./languages/java/api-definition-methods.md) | Detailed Java API framework inventory |
 | [languages/python/api-definition-methods.md](./languages/python/api-definition-methods.md) | Detailed Python API framework inventory |
