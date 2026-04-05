@@ -208,6 +208,51 @@ export class DiskManager {
     }
   }
 
+  /**
+   * Scan data/repos/<owner>/<name>/source for existing clones not yet in disk_cache,
+   * and measure the jobs log directory. Runs in the background on server startup.
+   */
+  async backfill(dataDir: string, jobsDir: string): Promise<void> {
+    // Load already-tracked keys so we skip them (avoid re-measuring large dirs unnecessarily)
+    const existing = await db.select({ entryType: diskCache.entryType, key: diskCache.key })
+      .from(diskCache) as { entryType: string; key: string }[]
+    const tracked = new Set(existing.map((e) => `${e.entryType}:${e.key}`))
+
+    // Scan data/<owner>/<name>/source
+    let owners: Awaited<ReturnType<typeof fs.readdir>>
+    try {
+      owners = await fs.readdir(dataDir, { withFileTypes: true })
+    } catch {
+      owners = []
+    }
+
+    for (const ownerEnt of owners) {
+      if (!ownerEnt.isDirectory() || ownerEnt.name === 'jobs') continue
+      const ownerDir = path.join(dataDir, ownerEnt.name)
+      let repos: Awaited<ReturnType<typeof fs.readdir>>
+      try {
+        repos = await fs.readdir(ownerDir, { withFileTypes: true })
+      } catch {
+        continue
+      }
+      for (const repoEnt of repos) {
+        if (!repoEnt.isDirectory()) continue
+        const key = `${ownerEnt.name}/${repoEnt.name}`
+        const sourceDir = path.join(ownerDir, repoEnt.name, 'source')
+        if (tracked.has(`repo:${key}`)) continue
+        // Check source dir exists
+        try { await fs.lstat(sourceDir) } catch { continue }
+        await this.recordAccess('repo', key, sourceDir).catch(() => {})
+      }
+    }
+
+    // Track log directory if not already tracked
+    if (!tracked.has('logs:jobs')) {
+      try { await fs.lstat(jobsDir) } catch { return }
+      await this.recordAccess('logs', 'jobs', jobsDir).catch(() => {})
+    }
+  }
+
   /** Return current disk info for the settings page. */
   async getDiskInfo(maxBytes: number): Promise<DiskInfo> {
     const entries = await db.select().from(diskCache).orderBy(diskCache.lastUsedAt) as DiskCacheRow[]
