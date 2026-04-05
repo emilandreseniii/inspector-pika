@@ -75,5 +75,31 @@ await run('Add repo_entity_fields unique constraint', `
     UNIQUE (entity_id, normalized_name)
 `)
 
+// 6. Create settings table
+await run('Create settings table', `
+  CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value JSONB NOT NULL
+  )
+`)
+
+// 7. Create disk_cache table
+await run('Create disk_cache table', `
+  CREATE TABLE IF NOT EXISTS disk_cache (
+    id           SERIAL PRIMARY KEY,
+    entry_type   TEXT NOT NULL,
+    key          TEXT NOT NULL,
+    path         TEXT NOT NULL,
+    size_bytes   BIGINT NOT NULL DEFAULT 0,
+    last_used_at TIMESTAMP NOT NULL DEFAULT NOW()
+  )
+`)
+
+await run('Add disk_cache unique constraint', `
+  ALTER TABLE disk_cache
+    ADD CONSTRAINT disk_cache_type_key_uniq
+    UNIQUE (entry_type, key)
+`)
+
 await sql.end()
 console.log('\nMigration complete.')

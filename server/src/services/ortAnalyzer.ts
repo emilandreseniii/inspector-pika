@@ -1,6 +1,8 @@
 import { spawn, execSync } from 'child_process'
 import fs from 'fs/promises'
 import path from 'path'
+import { diskManager } from './diskManager'
+import { getSettings } from './settingsService'
 
 const PROJECT_ROOT = path.resolve(__dirname, '../../../')
 const DATA_DIR = path.join(PROJECT_ROOT, 'data')
@@ -133,9 +135,18 @@ export async function cloneOrUpdate(repo: string, sourceDir: string, onLog?: Log
   const pending = repoLocks.get(repo)
   if (pending) await pending.catch(() => { /* ignore errors from previous attempt */ })
 
+  // Space check before touching disk
+  const s = await getSettings().catch(() => null)
+  if (s?.diskCheckOnOperation) {
+    await diskManager.checkAndEvict(s).catch(() => {})
+  }
+
   const operation = _doCloneOrUpdate(repo, sourceDir, onLog)
   repoLocks.set(repo, operation.then(() => { repoLocks.delete(repo) }, () => { repoLocks.delete(repo) }))
   await operation
+
+  // Record size after clone/pull completes
+  await diskManager.recordAccess('repo', repo, sourceDir).catch(() => {})
 }
 
 async function _doCloneOrUpdate(repo: string, sourceDir: string, onLog?: LogFn): Promise<void> {

@@ -20,6 +20,10 @@ See also the detailed feature requirements:
    - [FR-5 API Analysis](#fr-5-api-analysis)
    - [FR-6 Job Management](#fr-6-job-management)
    - [FR-7 User Interface](#fr-7-user-interface)
+   - [FR-8 Organisation Browser](#fr-8-organisation-browser)
+   - [FR-9 Package Catalog](#fr-9-package-catalog)
+   - [FR-10 Settings](#fr-10-settings)
+   - [FR-11 Disk Space Management](#fr-11-disk-space-management)
 4. [Non-Functional Requirements](#4-non-functional-requirements)
 5. [Constraints & Assumptions](#5-constraints--assumptions)
 6. [Glossary](#6-glossary)
@@ -242,6 +246,52 @@ See [api-analysis-overview.md](api-analysis-overview.md) for full detail.
 - **Repos** — all repositories that depend on this package, showing the repo full name and the version it uses; each row is a link to the repository detail page.
 
 **FR-9.5** The Explore section (Orgs, Repos, Packages) shall show sub-navigation tabs below the header banner on all Explore-section pages, including detail pages, with the appropriate sub-tab active.
+
+---
+
+### FR-10 Settings
+
+**FR-10.1** The application shall provide a **Settings** page accessible via a Settings tab in the main navigation header, alongside Explore and Jobs.
+
+**FR-10.2** Settings shall be persisted in the database (`settings` table, key-value store) so they survive server restarts.
+
+**FR-10.3** The Settings page shall allow the user to configure:
+- **Maximum data directory size** (bytes; UI shows GB; default 20 GB)
+- **Disk check interval** (minutes; default 10; used for the periodic background check)
+- **Check on operation** toggle (boolean; default on) — when enabled, a space check runs before any clone/pull operation
+
+**FR-10.4** Changes to settings shall take effect immediately without a server restart. The periodic interval shall restart with the new value as soon as the setting is saved.
+
+---
+
+### FR-11 Disk Space Management
+
+**FR-11.1** The system shall maintain a **disk cache registry** — a database table (`disk_cache`) that tracks each cached entry's type, path, size in bytes, and last-used timestamp.
+
+**FR-11.2** Two entry types shall be tracked:
+- `repo` — a cloned repository directory (`data/repos/<owner>/<name>`)
+- `logs` — the job log directory (`data/jobs/`)
+
+**FR-11.3** When a repository is cloned or updated (git clone / git pull), its `disk_cache` entry shall be upserted: the path, size (measured after the operation), and `lastUsedAt` timestamp shall be recorded.
+
+**FR-11.4** When any analysis job runs on a repository (language detection, dependency analysis, entity analysis, API analysis), the repo's `lastUsedAt` shall be updated — even if no clone/pull occurs.
+
+**FR-11.5** A **space check** shall determine the current total disk usage (sum of all `disk_cache` sizes) and compare it to the configured maximum. If usage exceeds the maximum, the system shall evict entries in least-recently-used order until usage falls below the maximum.
+
+**FR-11.6** Evicting a `repo` entry shall delete the repository's clone directory from disk and remove the `disk_cache` row. The repository's metadata and analysis results in the database shall be preserved.
+
+**FR-11.7** The space check shall be triggered in two ways:
+- **On operation** (if the setting is enabled): before each `cloneOrUpdate` call, synchronously evict if necessary.
+- **Periodically**: a background `setInterval` runs the space check at the configured interval (default 10 minutes). The interval restarts when the setting changes.
+
+**FR-11.8** If a repo's clone directory has been evicted and is needed again, the next clone/pull job shall re-download it transparently.
+
+**FR-11.9** The Settings page shall display a **Disk Usage** panel showing:
+- Total tracked usage vs. the configured maximum (progress bar)
+- A table of all `disk_cache` entries with: type, key, size (human-readable), and last-used timestamp
+- A manual **Run Space Check** button that triggers an immediate eviction pass
+
+**FR-11.10** Disk size shall be computed by recursively summing file sizes in the tracked directory. Size measurements shall be cached in `disk_cache` and refreshed each time an operation touches the directory, not on every read.
 
 ---
 

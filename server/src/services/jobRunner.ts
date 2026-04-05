@@ -10,6 +10,7 @@ import { detectLanguages } from './enryAnalyzer'
 import { analyzeEntities } from './entityAnalysis'
 import { toSnakeCase } from './entityAnalysis/normalizer'
 import { analyzeApis } from './apiAnalysis'
+import { diskManager } from './diskManager'
 import type { CreateJobInput } from '@inspector-pika/shared'
 
 const PROJECT_ROOT = path.resolve(__dirname, '../../../')
@@ -144,6 +145,8 @@ async function runAnalyzeLanguages(input: Extract<CreateJobInput, { type: 'analy
   const { source } = repoDirs(input.repo)
 
   await cloneOrUpdate(input.repo, source, onLog)
+  // cloneOrUpdate already calls recordAccess; touch ensures lastUsedAt is updated even on pull
+  await diskManager.touchAccess('repo', input.repo).catch(() => {})
   const languages = await detectLanguages(source, onLog)
 
   // Replace all language rows for this repo
@@ -559,5 +562,8 @@ export async function runJob(jobId: number, input: CreateJobInput): Promise<void
       .update(jobs)
       .set({ status: 'failed', error: (err as Error).message, completedAt: new Date() })
       .where(and(eq(jobs.id, jobId), ne(jobs.status, 'cancelled')))
+  } finally {
+    // Track log directory size after every job
+    await diskManager.recordAccess('logs', 'jobs', JOB_LOGS_DIR).catch(() => {})
   }
 }

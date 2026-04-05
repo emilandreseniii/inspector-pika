@@ -4,6 +4,7 @@ import RepositoryPage from './pages/RepositoryPage'
 import JobDetailPage from './pages/JobDetailPage'
 import OrgPage from './pages/OrgPage'
 import PackagePage from './pages/PackagePage'
+import SettingsPage from './pages/SettingsPage'
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="/packages" element={<MainPage tab="explore" subTab="packages" />} />
         <Route path="/packages/:id" element={<PackagePage />} />
         <Route path="/jobs" element={<MainPage tab="jobs" />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="/jobs/:id" element={<JobDetailPage />} />
         <Route path="/repositories/:id" element={<RepositoryPage />} />
         <Route path="*" element={<Navigate to="/repos" replace />} />

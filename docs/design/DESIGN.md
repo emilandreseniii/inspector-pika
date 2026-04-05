@@ -122,6 +122,11 @@ Entity and API analysis jobs check for existing data and skip if results already
 | [entity-job-plan.md](entity-job-plan.md) | `analyze_entities` job flow, API additions, error handling |
 | [entity-ui-plan.md](entity-ui-plan.md) | React component hierarchy and state for the Data Entities section |
 
+### Disk Space Management & Settings
+| Document | Description |
+|----------|-------------|
+| [disk-management.md](disk-management.md) | LRU disk cache, settings store, DiskManager service, Settings page |
+
 ### API Analysis
 | Document | Description |
 |----------|-------------|

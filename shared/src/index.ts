@@ -307,6 +307,34 @@ export const PackageRepoSchema = z.object({
 })
 export type PackageRepo = z.infer<typeof PackageRepoSchema>
 
+// ---- Settings ----
+
+export const AppSettingsSchema = z.object({
+  diskMaxBytes: z.number(),
+  diskCheckIntervalMinutes: z.number(),
+  diskCheckOnOperation: z.boolean(),
+})
+export type AppSettings = z.infer<typeof AppSettingsSchema>
+
+// ---- Disk cache ----
+
+export const DiskCacheEntrySchema = z.object({
+  id: z.number(),
+  entryType: z.string(),
+  key: z.string(),
+  path: z.string(),
+  sizeBytes: z.number(),
+  lastUsedAt: z.string(),
+})
+export type DiskCacheEntry = z.infer<typeof DiskCacheEntrySchema>
+
+export const DiskInfoSchema = z.object({
+  entries: z.array(DiskCacheEntrySchema),
+  totalBytes: z.number(),
+  maxBytes: z.number(),
+})
+export type DiskInfo = z.infer<typeof DiskInfoSchema>
+
 // ---- API response wrappers ----
 
 export type ApiSuccess<T> = { data: T }

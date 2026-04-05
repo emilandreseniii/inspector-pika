@@ -6,6 +6,7 @@ export default function AppHeader() {
   const { pathname } = useLocation()
 
   const isJobs = pathname.startsWith('/jobs')
+  const isSettings = pathname.startsWith('/settings')
   const activeSub = pathname.startsWith('/orgs') ? 'orgs'
     : pathname.startsWith('/packages') ? 'packages'
     : 'repos'
@@ -28,9 +29,15 @@ export default function AppHeader() {
           >
             Jobs
           </button>
+          <button
+            style={{ ...styles.mainTab, ...(isSettings ? styles.mainTabActive : {}) }}
+            onClick={() => navigate('/settings')}
+          >
+            Settings
+          </button>
         </nav>
       </header>
-      {!isJobs && (
+      {!isJobs && !isSettings && (
         <nav style={styles.subNav}>
           <button
             style={{ ...styles.subTab, ...(activeSub === 'orgs' ? styles.subTabActive : {}) }}

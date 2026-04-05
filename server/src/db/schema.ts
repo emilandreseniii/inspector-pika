@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, jsonb, timestamp, unique, index } from 'drizzle-orm/pg-core'
+import { pgTable, serial, text, integer, boolean, jsonb, timestamp, unique, index, bigint } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
 // ---- Repositories (provider-agnostic) ----
@@ -80,6 +80,26 @@ export const repoDocs = pgTable('repo_docs', {
   content: text('content').notNull(),
   generatedAt: timestamp('generated_at').defaultNow().notNull(),
 })
+
+// ---- Settings (key/value store) ----
+
+export const settings = pgTable('settings', {
+  key: text('key').primaryKey(),
+  value: jsonb('value').notNull(),
+})
+
+// ---- Disk cache registry ----
+
+export const diskCache = pgTable('disk_cache', {
+  id: serial('id').primaryKey(),
+  entryType: text('entry_type').notNull(),   // 'repo' | 'logs'
+  key: text('key').notNull(),                // 'owner/name' for repos, 'jobs' for logs
+  path: text('path').notNull(),
+  sizeBytes: bigint('size_bytes', { mode: 'number' }).notNull().default(0),
+  lastUsedAt: timestamp('last_used_at').defaultNow().notNull(),
+}, (table) => ({
+  uniqueEntry: unique('disk_cache_type_key_uniq').on(table.entryType, table.key),
+}))
 
 // ---- Canonical package registry (one row per unique type+namespace+name) ----
 
