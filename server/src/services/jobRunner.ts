@@ -1,6 +1,9 @@
+import fs from 'fs'
+import fsPromises from 'fs/promises'
+import path from 'path'
 import { eq, and, ne, count, desc } from 'drizzle-orm'
 import { db } from '../db'
-import { jobs, repositories, repoPackages, repoLanguages, repoEntityApproaches, repoEntities, repoEntityFields, repoEntityRelationships, repoApiApproaches, repoApiSurfaces, repoApiOps, repoApiOpParams } from '../db/schema'
+import { jobs, repositories, repoPackages, packages, repoLanguages, repoEntityApproaches, repoEntities, repoEntityFields, repoEntityRelationships, repoApiApproaches, repoApiSurfaces, repoApiOps, repoApiOpParams } from '../db/schema'
 import { fetchRepoSummary, fetchOrgRepos } from './github'
 import { cloneOrUpdate, runOrtAnalyze, parseOrtResult, repoDirs } from './ortAnalyzer'
 import { detectLanguages } from './enryAnalyzer'
@@ -8,6 +11,15 @@ import { analyzeEntities } from './entityAnalysis'
 import { toSnakeCase } from './entityAnalysis/normalizer'
 import { analyzeApis } from './apiAnalysis'
 import type { CreateJobInput } from '@inspector-pika/shared'
+
+const PROJECT_ROOT = path.resolve(__dirname, '../../../')
+const JOB_LOGS_DIR = path.join(PROJECT_ROOT, 'data', 'jobs')
+
+export function jobLogPath(jobId: number): string {
+  return path.join(JOB_LOGS_DIR, `${jobId}.log`)
+}
+
+type LogFn = (chunk: string) => void
 
 async function upsertRepository(summary: Awaited<ReturnType<typeof fetchRepoSummary>>) {
   const [row] = await db
@@ -59,20 +71,44 @@ async function runExploreOrg(input: Extract<CreateJobInput, { type: 'explore_git
   return { org: input.org, count: inserted.length, repositories: inserted }
 }
 
-async function runAnalyzeDependencies(input: Extract<CreateJobInput, { type: 'analyze_dependencies' }>) {
+async function runAnalyzeDependencies(input: Extract<CreateJobInput, { type: 'analyze_dependencies' }>, onLog?: LogFn) {
   const { source, ortOutput } = repoDirs(input.repo)
 
-  await cloneOrUpdate(input.repo, source)
-  await runOrtAnalyze(source, ortOutput)
+  await cloneOrUpdate(input.repo, source, onLog)
+  await runOrtAnalyze(source, ortOutput, onLog)
 
-  const packages = await parseOrtResult(ortOutput)
+  const ortPackages = await parseOrtResult(ortOutput)
 
   // Upsert packages into the database
-  for (const pkg of packages) {
+  for (const pkg of ortPackages) {
+    const pkgType = pkg.type ?? 'unknown'
+    const pkgNamespace = pkg.namespace ?? ''
+
+    // Upsert into canonical packages registry
+    const [canonPkg] = await db
+      .insert(packages)
+      .values({
+        type: pkgType,
+        namespace: pkgNamespace,
+        name: pkg.name,
+        description: pkg.description ?? null,
+        homepageUrl: pkg.homepageUrl ?? null,
+      })
+      .onConflictDoUpdate({
+        target: [packages.type, packages.namespace, packages.name],
+        set: {
+          description: pkg.description ?? null,
+          homepageUrl: pkg.homepageUrl ?? null,
+          updatedAt: new Date(),
+        },
+      })
+      .returning({ id: packages.id })
+
     await db
       .insert(repoPackages)
       .values({
         repoId: input.repoId,
+        canonPackageId: canonPkg.id,
         packageId: pkg.packageId,
         purl: pkg.purl,
         type: pkg.type,
@@ -87,6 +123,7 @@ async function runAnalyzeDependencies(input: Extract<CreateJobInput, { type: 'an
       .onConflictDoUpdate({
         target: [repoPackages.repoId, repoPackages.packageId],
         set: {
+          canonPackageId: canonPkg.id,
           purl: pkg.purl,
           type: pkg.type,
           namespace: pkg.namespace,
@@ -100,14 +137,14 @@ async function runAnalyzeDependencies(input: Extract<CreateJobInput, { type: 'an
       })
   }
 
-  return { repo: input.repo, packageCount: packages.length }
+  return { repo: input.repo, packageCount: ortPackages.length }
 }
 
-async function runAnalyzeLanguages(input: Extract<CreateJobInput, { type: 'analyze_languages' }>) {
+async function runAnalyzeLanguages(input: Extract<CreateJobInput, { type: 'analyze_languages' }>, onLog?: LogFn) {
   const { source } = repoDirs(input.repo)
 
-  await cloneOrUpdate(input.repo, source)
-  const languages = await detectLanguages(source)
+  await cloneOrUpdate(input.repo, source, onLog)
+  const languages = await detectLanguages(source, onLog)
 
   // Replace all language rows for this repo
   await db.delete(repoLanguages).where(eq(repoLanguages.repoId, input.repoId))
@@ -122,7 +159,7 @@ async function runAnalyzeLanguages(input: Extract<CreateJobInput, { type: 'analy
   return { repo: input.repo, languageCount: languages.length }
 }
 
-async function runAnalyzeEntities(input: Extract<CreateJobInput, { type: 'analyze_entities' }>) {
+async function runAnalyzeEntities(input: Extract<CreateJobInput, { type: 'analyze_entities' }>, onLog?: LogFn) {
   const { source } = repoDirs(input.repo)
 
   // Step a: verify repo exists
@@ -130,7 +167,7 @@ async function runAnalyzeEntities(input: Extract<CreateJobInput, { type: 'analyz
   if (!repo) throw new Error(`Repository ${input.repoId} not found`)
 
   // Step b: ensure cloned
-  await cloneOrUpdate(input.repo, source)
+  await cloneOrUpdate(input.repo, source, onLog)
 
   // Step c: load detected languages
   const languages = await db
@@ -318,13 +355,13 @@ async function runAnalyzeEntities(input: Extract<CreateJobInput, { type: 'analyz
   }
 }
 
-async function runAnalyzeApis(input: Extract<CreateJobInput, { type: 'analyze_apis' }>) {
+async function runAnalyzeApis(input: Extract<CreateJobInput, { type: 'analyze_apis' }>, onLog?: LogFn) {
   const { source } = repoDirs(input.repo)
 
   const [repo] = await db.select().from(repositories).where(eq(repositories.id, input.repoId))
   if (!repo) throw new Error(`Repository ${input.repoId} not found`)
 
-  await cloneOrUpdate(input.repo, source)
+  await cloneOrUpdate(input.repo, source, onLog)
 
   const languages = await db
     .select()
@@ -485,6 +522,12 @@ async function runAnalyzeApis(input: Extract<CreateJobInput, { type: 'analyze_ap
 }
 
 export async function runJob(jobId: number, input: CreateJobInput): Promise<void> {
+  await fsPromises.mkdir(JOB_LOGS_DIR, { recursive: true })
+  const logPath = jobLogPath(jobId)
+  const onLog: LogFn = (chunk) => {
+    try { fs.appendFileSync(logPath, chunk) } catch { /* ignore log write errors */ }
+  }
+
   await db
     .update(jobs)
     .set({ status: 'running', startedAt: new Date() })
@@ -498,13 +541,13 @@ export async function runJob(jobId: number, input: CreateJobInput): Promise<void
     } else if (input.type === 'explore_github_org') {
       result = await runExploreOrg(input)
     } else if (input.type === 'analyze_languages') {
-      result = await runAnalyzeLanguages(input)
+      result = await runAnalyzeLanguages(input, onLog)
     } else if (input.type === 'analyze_entities') {
-      result = await runAnalyzeEntities(input)
+      result = await runAnalyzeEntities(input, onLog)
     } else if (input.type === 'analyze_apis') {
-      result = await runAnalyzeApis(input)
+      result = await runAnalyzeApis(input, onLog)
     } else {
-      result = await runAnalyzeDependencies(input)
+      result = await runAnalyzeDependencies(input, onLog)
     }
 
     await db

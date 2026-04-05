@@ -9,14 +9,14 @@ export interface EnryLanguage {
   bytes: number // percentage × 100 (e.g. 8311 = 83.11%)
 }
 
-export async function detectLanguages(sourceDir: string): Promise<EnryLanguage[]> {
+export async function detectLanguages(sourceDir: string, onLog?: (chunk: string) => void): Promise<EnryLanguage[]> {
   const output = await new Promise<string>((resolve, reject) => {
     const proc = spawn(ENRY_BIN, ['-mode=byte', sourceDir], {
       stdio: ['ignore', 'pipe', 'pipe'],
     })
     let stdout = ''
-    proc.stdout.on('data', (d: Buffer) => { stdout += d.toString() })
-    proc.stderr.on('data', (d: Buffer) => process.stderr.write(d))
+    proc.stdout.on('data', (d: Buffer) => { const s = d.toString(); stdout += s; onLog?.(s) })
+    proc.stderr.on('data', (d: Buffer) => { process.stderr.write(d); onLog?.(d.toString()) })
     proc.on('close', (code) => {
       if (code === 0 || stdout.trim().length > 0) resolve(stdout)
       else reject(new Error(`enry exited with code ${code}`))

@@ -66,9 +66,9 @@ New features follow this sequence:
 
 5. Refactor      →  Clean up with tests staying green
 
-6. Pre-commit    →  Run all quality checks (see .agents/AGENTS.md)
+6. Pre-commit    →  Run all quality checks (see .claude/CLAUDE.md)
 
 7. Commit & push
 ```
 
-See [.agents/AGENTS.md](../.agents/AGENTS.md) for the full agent and pre-commit conventions.
+See [.claude/CLAUDE.md](../.claude/CLAUDE.md) for the full agent and pre-commit conventions.

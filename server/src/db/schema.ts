@@ -81,9 +81,26 @@ export const repoDocs = pgTable('repo_docs', {
   generatedAt: timestamp('generated_at').defaultNow().notNull(),
 })
 
+// ---- Canonical package registry (one row per unique type+namespace+name) ----
+
+export const packages = pgTable('packages', {
+  id: serial('id').primaryKey(),
+  type: text('type').notNull(),           // NPM, Maven, PyPI, Go, Cargo, etc.
+  namespace: text('namespace').notNull().default(''),  // org.apache, @scope, etc.
+  name: text('name').notNull(),
+  description: text('description'),
+  homepageUrl: text('homepage_url'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  uniquePackage: unique('packages_type_namespace_name_uniq').on(table.type, table.namespace, table.name),
+  nameIdx: index('packages_name_idx').on(table.name),
+}))
+
 export const repoPackages = pgTable('repo_packages', {
   id: serial('id').primaryKey(),
   repoId: integer('repo_id').references(() => repositories.id, { onDelete: 'cascade' }).notNull(),
+  canonPackageId: integer('canon_package_id').references(() => packages.id, { onDelete: 'set null' }),
   packageId: text('package_id').notNull(),   // ORT identifier: "NPM::express:4.18.2"
   purl: text('purl'),                         // pkg:npm/express@4.18.2
   type: text('type'),                         // NPM, Maven, PyPI, Go, etc.
@@ -283,8 +300,13 @@ export const repoDocsRelations = relations(repoDocs, ({ one }) => ({
   repository: one(repositories, { fields: [repoDocs.repoId], references: [repositories.id] }),
 }))
 
+export const packagesRelations = relations(packages, ({ many }) => ({
+  repoPackages: many(repoPackages),
+}))
+
 export const repoPackagesRelations = relations(repoPackages, ({ one }) => ({
   repository: one(repositories, { fields: [repoPackages.repoId], references: [repositories.id] }),
+  canonPackage: one(packages, { fields: [repoPackages.canonPackageId], references: [packages.id] }),
 }))
 
 export const repoEntityApproachesRelations = relations(repoEntityApproaches, ({ one, many }) => ({

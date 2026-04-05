@@ -181,9 +181,10 @@ describe('runOrtAnalyze', () => {
       .mockReturnValueOnce(makeProc('', 1, npmCrashStderr) as any) // first attempt fails
       .mockReturnValueOnce(makeProc('', 0) as any)                  // retry succeeds
 
-    // First access (result check after first failure) → ENOENT; subsequent calls succeed
+    // access call order: (1) global config check → exists; (2) result check after first failure → ENOENT; (3+) succeed
     vi.mocked(fs.access)
-      .mockRejectedValueOnce(new Error('ENOENT')) // no result after first failure
+      .mockResolvedValueOnce(undefined)           // global config already exists — skip bootstrap
+      .mockRejectedValueOnce(new Error('ENOENT')) // no result after first failure → triggers retry
       .mockResolvedValue(undefined)               // subsequent checks succeed
 
     // readFile returns null (no pre-existing config) so backup logic is skipped

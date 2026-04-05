@@ -201,9 +201,9 @@ See [api-analysis-overview.md](api-analysis-overview.md) for full detail.
 
 **FR-7.1** The application shall be a single-page React application served from `http://localhost:5173` in development.
 
-**FR-7.2** The main page shall have two tabs: **Explore** (repository list) and **Jobs** (job list).
+**FR-7.2** The application header shall contain **Explore** and **Jobs** navigation tabs rendered inside the dark banner bar (not in a separate white nav bar). Active and inactive tab styles shall be adapted for the dark background.
 
-**FR-7.3** Navigation between tabs shall update the browser URL (`/` for Explore, `/jobs` for Jobs). Unknown routes shall redirect to `/`.
+**FR-7.3** Navigation between tabs shall update the browser URL. Explore routes: `/orgs`, `/repos`, `/packages` (and their detail pages). Jobs routes: `/jobs`, `/jobs/:id`. Unknown routes shall redirect to `/repos`.
 
 **FR-7.4** The repository detail page shall be accessible at `/repositories/:id`.
 
@@ -216,6 +216,32 @@ See [api-analysis-overview.md](api-analysis-overview.md) for full detail.
 **FR-7.8** Timestamps shall display as relative time (e.g. "2 hours ago") with the absolute time available on hover.
 
 **FR-7.9** The "Start a Job" modal shall expose all job types with appropriate input fields and validation.
+
+---
+
+### FR-8 Organisation Browser
+
+**FR-8.1** The **Orgs** sub-tab (under Explore) shall list all distinct repository owners derived from explored repositories, showing the owner name and repository count, sorted alphabetically.
+
+**FR-8.2** Clicking an organisation shall navigate to `/orgs/:owner`, which shows the organisation name, total repository count, and the list of its repositories with the same columns as the Repos list.
+
+**FR-8.3** Repositories on the organisation page shall be clickable links to the repository detail page.
+
+---
+
+### FR-9 Package Catalog
+
+**FR-9.1** The **Packages** sub-tab (under Explore) shall list all distinct packages discovered across all dependency analyses, deduplicated by `(type, namespace, name)`. The list shall show: type badge, namespace/name, description, number of distinct versions, and number of repos using it.
+
+**FR-9.2** Package identity shall be stored in a dedicated `packages` table keyed by `(type, namespace, name)`. This table is populated and updated each time a dependency analysis completes.
+
+**FR-9.3** The `repo_packages` table shall reference `packages.id` via a `canonPackageId` foreign key so that each per-repo package record is linked to its canonical package.
+
+**FR-9.4** Clicking a package shall navigate to `/packages/:id`, which shows the package header (type, namespace, name, description, homepage) and two sub-tabs:
+- **Versions** — all distinct versions of this package found across repos, with repo count per version.
+- **Repos** — all repositories that depend on this package, showing the repo full name and the version it uses; each row is a link to the repository detail page.
+
+**FR-9.5** The Explore section (Orgs, Repos, Packages) shall show sub-navigation tabs below the header banner on all Explore-section pages, including detail pages, with the appropriate sub-tab active.
 
 ---
 

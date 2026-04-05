@@ -268,6 +268,45 @@ export const RepoApiSurfaceSchema = z.object({
 })
 export type RepoApiSurface = z.infer<typeof RepoApiSurfaceSchema>
 
+// ---- Organisation ----
+
+export const OrgSchema = z.object({
+  owner: z.string(),
+  provider: z.string(),
+  repoCount: z.number(),
+})
+export type Org = z.infer<typeof OrgSchema>
+
+// ---- Package catalog ----
+
+export const PackageSchema = z.object({
+  id: z.number(),
+  type: z.string(),
+  namespace: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  homepageUrl: z.string().nullable(),
+  versionCount: z.number().optional(),
+  repoCount: z.number().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+export type Package = z.infer<typeof PackageSchema>
+
+export const PackageVersionSchema = z.object({
+  version: z.string().nullable(),
+  repoCount: z.number(),
+})
+export type PackageVersion = z.infer<typeof PackageVersionSchema>
+
+export const PackageRepoSchema = z.object({
+  repoId: z.number(),
+  fullName: z.string(),
+  version: z.string().nullable(),
+  provider: z.string(),
+})
+export type PackageRepo = z.infer<typeof PackageRepoSchema>
+
 // ---- API response wrappers ----
 
 export type ApiSuccess<T> = { data: T }

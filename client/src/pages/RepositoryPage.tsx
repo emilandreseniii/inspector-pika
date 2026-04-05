@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import type { Repository, RepoPackage, RepoLanguage, RepoEntity, RepoEntityApproach, RepoApiApproachRecord, RepoApiSurface, RepoApiOp } from '@inspector-pika/shared'
-import logo from '../assets/logo.svg'
+import AppHeader from '../components/AppHeader'
+import Pager from '../components/Pager'
+
+const PAGE_SIZES = [10, 20, 50, 100, 200] as const
+type BottomTab = 'packages' | 'apis' | 'entities'
 
 const PROVIDER_LABELS: Record<string, string> = {
   github: 'GitHub',
@@ -38,10 +42,23 @@ export default function RepositoryPage() {
   const [apiStatus, setApiStatus] = useState<JobStatus>('idle')
   const [apiError, setApiError] = useState<string | null>(null)
 
+  const [bottomTab, setBottomTab] = useState<BottomTab>('packages')
+  const [pkgPage, setPkgPage] = useState(0)
+  const [pkgPageSize, setPkgPageSize] = useState(50)
+  const [apiPage, setApiPage] = useState(0)
+  const [apiPageSize, setApiPageSize] = useState(50)
+  const [entityPage, setEntityPage] = useState(0)
+  const [entityPageSize, setEntityPageSize] = useState(50)
+
   const [langUpdatedAt, setLangUpdatedAt] = useState<string | null>(null)
   const [depUpdatedAt, setDepUpdatedAt] = useState<string | null>(null)
   const [entityUpdatedAt, setEntityUpdatedAt] = useState<string | null>(null)
   const [apiUpdatedAt, setApiUpdatedAt] = useState<string | null>(null)
+
+  const [depJobId, setDepJobId] = useState<number | null>(null)
+  const [langJobId, setLangJobId] = useState<number | null>(null)
+  const [entityJobId, setEntityJobId] = useState<number | null>(null)
+  const [apiJobId, setApiJobId] = useState<number | null>(null)
 
   const depPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const langPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -75,6 +92,7 @@ export default function RepositoryPage() {
       currentStatus: JobStatus,
       setStatus: (s: JobStatus) => void,
       setErr: (e: string | null) => void,
+      setJobId: (id: number) => void,
       pollRef: React.MutableRefObject<ReturnType<typeof setInterval> | null>,
       onComplete: () => Promise<void>,
     ) => {
@@ -92,6 +110,7 @@ export default function RepositoryPage() {
         setErr(job.error ?? 'Job failed')
         if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
       } else if ((serverStatus === 'pending' || serverStatus === 'running') && currentStatus === 'idle') {
+        setJobId(job.id)
         setStatus(serverStatus)
         // Start polling so further transitions are caught
         startPolling(job.id, setStatus, setErr, pollRef, onComplete)
@@ -99,7 +118,7 @@ export default function RepositoryPage() {
     }
 
     await Promise.all([
-      sync('analyze_apis', apiStatus, setApiStatus, setApiError, apiPollRef, async () => {
+      sync('analyze_apis', apiStatus, setApiStatus, setApiError, setApiJobId, apiPollRef, async () => {
         const [ar, sr] = await Promise.all([
           fetch(`/api/v1/repositories/${id}/api-approaches`).then((r) => r.json()),
           fetch(`/api/v1/repositories/${id}/api-surfaces`).then((r) => r.json()),
@@ -107,17 +126,17 @@ export default function RepositoryPage() {
         if (!ar.error) setApiApproaches(ar.data)
         if (!sr.error) { setApiSurfaces(sr.data); if (sr.data[0]?.createdAt) setApiUpdatedAt(fmtDate(sr.data[0].createdAt)) }
       }),
-      sync('analyze_languages', langStatus, setLangStatus, setLangError, langPollRef, async () => {
+      sync('analyze_languages', langStatus, setLangStatus, setLangError, setLangJobId, langPollRef, async () => {
         const r = await fetch(`/api/v1/repositories/${id}/languages`)
         const j = await r.json()
         if (!j.error) { setLanguages(j.data); if (j.lastAnalyzedAt) setLangUpdatedAt(fmtDate(j.lastAnalyzedAt)) }
       }),
-      sync('analyze_dependencies', depStatus, setDepStatus, setDepError, depPollRef, async () => {
+      sync('analyze_dependencies', depStatus, setDepStatus, setDepError, setDepJobId, depPollRef, async () => {
         const r = await fetch(`/api/v1/repositories/${id}/packages`)
         const j = await r.json()
         if (!j.error) { setPackages(j.data); if (j.data[0]?.createdAt) setDepUpdatedAt(fmtDate(j.data[0].createdAt)) }
       }),
-      sync('analyze_entities', entityStatus, setEntityStatus, setEntityError, entityPollRef, async () => {
+      sync('analyze_entities', entityStatus, setEntityStatus, setEntityError, setEntityJobId, entityPollRef, async () => {
         const [er, ea] = await Promise.all([
           fetch(`/api/v1/repositories/${id}/entities`).then((r) => r.json()),
           fetch(`/api/v1/repositories/${id}/entity-approaches`).then((r) => r.json()),
@@ -235,6 +254,7 @@ export default function RepositoryPage() {
       })
       const json = await res.json()
       if (!res.ok) { setEntityStatus('failed'); setEntityError(json.error); return }
+      setEntityJobId(json.data.id)
       startPolling(json.data.id, setEntityStatus, setEntityError, entityPollRef, async () => {
         const [er, ea] = await Promise.all([
           fetch(`/api/v1/repositories/${id}/entities`).then((r) => r.json()),
@@ -267,6 +287,7 @@ export default function RepositoryPage() {
         })
         const json = await res.json()
         if (!res.ok) { setDepStatus('failed'); setDepError(json.error); return }
+        setDepJobId(json.data.id)
         startPolling(json.data.id, setDepStatus, setDepError, depPollRef, async () => {
           const r = await fetch(`/api/v1/repositories/${id}/packages`)
           const j = await r.json()
@@ -290,6 +311,7 @@ export default function RepositoryPage() {
         })
         const json = await res.json()
         if (!res.ok) { setLangStatus('failed'); setLangError(json.error); return }
+        setLangJobId(json.data.id)
         startPolling(json.data.id, setLangStatus, setLangError, langPollRef, async () => {
           const r = await fetch(`/api/v1/repositories/${id}/languages`)
           const j = await r.json()
@@ -325,6 +347,7 @@ export default function RepositoryPage() {
       })
       const json = await res.json()
       if (!res.ok) { setApiStatus('failed'); setApiError(json.error); return }
+      setApiJobId(json.data.id)
       startPolling(json.data.id, setApiStatus, setApiError, apiPollRef, async () => {
         const [ar, sr] = await Promise.all([
           fetch(`/api/v1/repositories/${id}/api-approaches`).then((r) => r.json()),
@@ -361,18 +384,16 @@ export default function RepositoryPage() {
   const isEntityBusy = entityStatus === 'pending' || entityStatus === 'running'
   const isApiBusy = apiStatus === 'pending' || apiStatus === 'running'
   const isAnyBusy = isDepBusy || isLangBusy || isEntityBusy || isApiBusy
+  const activeJobId = isDepBusy ? depJobId : isLangBusy ? langJobId : isEntityBusy ? entityJobId : isApiBusy ? apiJobId : null
 
   const totalBytes = languages.reduce((sum, l) => sum + (l.bytes ?? 0), 0)
 
   return (
     <div style={styles.container}>
-      <header style={styles.header}>
-        <img src={logo} alt="Inspector Pika" style={styles.logo} />
-        <h1 style={styles.title}>Inspector Pika</h1>
-      </header>
+      <AppHeader />
 
       <main style={styles.content}>
-        <button style={styles.back} onClick={() => navigate('/')}>← Back</button>
+        <button style={styles.back} onClick={() => navigate('/repos')}>← Back</button>
 
         {error && <p style={styles.error}>{error}</p>}
 
@@ -390,8 +411,7 @@ export default function RepositoryPage() {
                 <div ref={menuRef} style={styles.menuWrap}>
                   <button
                     style={{ ...styles.startBtn, ...(isAnyBusy ? styles.startBtnBusy : {}) }}
-                    onClick={() => !isAnyBusy && setShowJobMenu((v) => !v)}
-                    disabled={isAnyBusy}
+                    onClick={isAnyBusy && activeJobId ? () => navigate(`/jobs/${activeJobId}`) : () => setShowJobMenu((v) => !v)}
                   >
                     {isAnyBusy
                       ? `${isDepBusy ? (depStatus === 'pending' ? 'Queuing' : 'Analyzing') : isLangBusy ? (langStatus === 'pending' ? 'Queuing' : 'Detecting') : isEntityBusy ? (entityStatus === 'pending' ? 'Queuing' : 'Detecting') : (apiStatus === 'pending' ? 'Queuing' : 'Scanning')}…`
@@ -470,7 +490,7 @@ export default function RepositoryPage() {
                 </h3>
                 <div style={styles.sectionActions}>
                   <span style={styles.updatedAt}>{langUpdatedAt ? `Updated: ${langUpdatedAt}` : 'Not yet run'}</span>
-                  <button style={{ ...styles.analyzeBtn, ...(isLangBusy ? styles.analyzeBtnBusy : {}) }} disabled={isLangBusy} onClick={() => startJob('analyze_languages')}>
+                  <button style={{ ...styles.analyzeBtn, ...(isLangBusy ? styles.analyzeBtnBusy : {}) }} onClick={isLangBusy && langJobId ? () => navigate(`/jobs/${langJobId}`) : () => startJob('analyze_languages')}>
                     {isLangBusy ? 'Analyzing…' : 'Analyze'}
                   </button>
                 </div>
@@ -519,315 +539,355 @@ export default function RepositoryPage() {
               )}
             </div>
 
-            {/* ── Packages section ── */}
-            <div style={{ ...styles.section, marginTop: 24 }}>
-              <div style={styles.sectionHeaderRow}>
-                <h3 style={styles.sectionHeading}>
-                  Detected Packages
-                  {packages.length > 0 && <span style={styles.badge}>{packages.length}</span>}
-                </h3>
-                <div style={styles.sectionActions}>
-                  <span style={styles.updatedAt}>{depUpdatedAt ? `Updated: ${depUpdatedAt}` : 'Not yet run'}</span>
-                  <button style={{ ...styles.analyzeBtn, ...(isDepBusy ? styles.analyzeBtnBusy : {}) }} disabled={isDepBusy} onClick={() => startJob('analyze_dependencies')}>
-                    {isDepBusy ? 'Analyzing…' : 'Analyze'}
-                  </button>
+            {/* ── Bottom tabbed section: Packages | API Surfaces | Data Entities ── */}
+            <div style={{ ...styles.section, marginTop: 24, padding: 0, overflow: 'hidden' }}>
+
+              {/* Tab bar + per-tab actions */}
+              <div style={styles.tabBar}>
+                {(['packages', 'apis', 'entities'] as const).map((tab) => {
+                  const label = tab === 'packages' ? 'Packages' : tab === 'apis' ? 'API Surfaces' : 'Data Entities'
+                  const count = tab === 'packages' ? packages.length : tab === 'apis' ? apiSurfaces.length : entities.length
+                  return (
+                    <button
+                      key={tab}
+                      style={{ ...styles.tabBtn, ...(bottomTab === tab ? styles.tabBtnActive : {}) }}
+                      onClick={() => setBottomTab(tab)}
+                    >
+                      {label}
+                      {count > 0 && <span style={{ ...styles.badge, marginLeft: 6 }}>{count}</span>}
+                    </button>
+                  )
+                })}
+                <div style={{ flex: 1 }} />
+                <div style={{ ...styles.sectionActions, padding: '0 16px' }}>
+                  {bottomTab === 'packages' && (
+                    <>
+                      <span style={styles.updatedAt}>{depUpdatedAt ? `Updated: ${depUpdatedAt}` : 'Not yet run'}</span>
+                      <button style={{ ...styles.analyzeBtn, ...(isDepBusy ? styles.analyzeBtnBusy : {}) }} onClick={isDepBusy && depJobId ? () => navigate(`/jobs/${depJobId}`) : () => startJob('analyze_dependencies')}>
+                        {isDepBusy ? 'Analyzing…' : 'Analyze'}
+                      </button>
+                    </>
+                  )}
+                  {bottomTab === 'apis' && (
+                    <>
+                      <span style={styles.updatedAt}>{apiUpdatedAt ? `Updated: ${apiUpdatedAt}` : 'Not yet run'}</span>
+                      <button style={{ ...styles.analyzeBtn, ...(isApiBusy ? styles.analyzeBtnBusy : {}) }} onClick={isApiBusy && apiJobId ? () => navigate(`/jobs/${apiJobId}`) : () => startApiJob()}>
+                        {isApiBusy ? 'Scanning…' : 'Analyze'}
+                      </button>
+                    </>
+                  )}
+                  {bottomTab === 'entities' && (
+                    <>
+                      <span style={styles.updatedAt}>{entityUpdatedAt ? `Updated: ${entityUpdatedAt}` : 'Not yet run'}</span>
+                      <button style={{ ...styles.analyzeBtn, ...(isEntityBusy ? styles.analyzeBtnBusy : {}) }} onClick={isEntityBusy && entityJobId ? () => navigate(`/jobs/${entityJobId}`) : () => startEntityJob()}>
+                        {isEntityBusy ? 'Analyzing…' : 'Analyze'}
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
-              {isDepBusy && (
-                <p style={styles.muted}>Analysis in progress — this may take several minutes…</p>
-              )}
+              {/* Tab content */}
+              <div style={{ padding: 24 }}>
 
-              {!isDepBusy && packages.length === 0 && (
-                <p style={styles.muted}>No packages analysed yet. Use <strong>Start A Job → Analyze Dependencies</strong> to run ORT.</p>
-              )}
-
-              {packages.length > 0 && (
-                <table style={styles.pkgTable}>
-                  <thead>
-                    <tr>
-                      <th style={styles.th}>Package</th>
-                      <th style={styles.th}>Type</th>
-                      <th style={styles.th}>Version</th>
-                      <th style={styles.th}>License(s)</th>
-                      <th style={styles.th}>Description</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {packages.map((pkg) => (
-                      <tr key={pkg.id}>
-                        <td style={styles.td}>
-                          {pkg.homepageUrl ? (
-                            <a href={pkg.homepageUrl} target="_blank" rel="noopener noreferrer" style={styles.link}>
-                              {pkg.namespace ? `${pkg.namespace}/${pkg.name}` : pkg.name}
-                            </a>
-                          ) : (
-                            pkg.namespace ? `${pkg.namespace}/${pkg.name}` : pkg.name
-                          )}
-                        </td>
-                        <td style={styles.td}>{pkg.type ?? '—'}</td>
-                        <td style={styles.td}>{pkg.version ?? '—'}</td>
-                        <td style={styles.td}>
-                          {pkg.declaredLicenses && pkg.declaredLicenses.length > 0
-                            ? pkg.declaredLicenses.join(', ')
-                            : '—'}
-                        </td>
-                        <td style={{ ...styles.td, ...styles.descCell }}>
-                          {pkg.description
-                            ? <span title={pkg.description}>
-                                {pkg.description.length > 20
-                                  ? pkg.description.slice(0, 20) + '…'
-                                  : pkg.description}
-                              </span>
-                            : '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-            {/* ── API Surfaces section ── */}
-            <div style={{ ...styles.section, marginTop: 24 }}>
-              <div style={styles.sectionHeaderRow}>
-                <h3 style={styles.sectionHeading}>
-                  API Surfaces
-                  {apiSurfaces.length > 0 && <span style={styles.badge}>{apiSurfaces.length}</span>}
-                </h3>
-                <div style={styles.sectionActions}>
-                  <span style={styles.updatedAt}>{apiUpdatedAt ? `Updated: ${apiUpdatedAt}` : 'Not yet run'}</span>
-                  <button style={{ ...styles.analyzeBtn, ...(isApiBusy ? styles.analyzeBtnBusy : {}) }} disabled={isApiBusy} onClick={() => startApiJob()}>
-                    {isApiBusy ? 'Scanning…' : 'Analyze'}
-                  </button>
-                </div>
-              </div>
-
-              {apiApproaches.length > 0 && (
-                <div style={styles.approachBadges}>
-                  {apiApproaches.map((a) => (
-                    <span key={a.id} style={{ ...styles.approachBadge, ...confidenceStyle(a.confidence) }} title={a.signals?.join('\n')}>
-                      {API_APPROACH_LABELS[a.approach] ?? a.approach}
-                      {a.endpointCount != null ? ` (${a.endpointCount})` : ''}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {isApiBusy && <p style={styles.muted}>Detection in progress…</p>}
-
-              {!isApiBusy && apiSurfaces.length === 0 && apiStatus === 'idle' && (
-                <p style={styles.muted}>No API data yet. Use <strong>Start A Job → Detect APIs</strong> to analyze.</p>
-              )}
-
-              {!isApiBusy && apiSurfaces.length === 0 && apiStatus !== 'idle' && (
-                <p style={styles.muted}>No API surfaces detected in this repository.</p>
-              )}
-
-              {apiSurfaces.length > 0 && (
-                <table style={styles.pkgTable}>
-                  <thead>
-                    <tr>
-                      <th style={styles.th}>Surface</th>
-                      <th style={styles.th}>Style</th>
-                      <th style={styles.th}>Base Path / Package</th>
-                      <th style={{ ...styles.th, textAlign: 'right' as const }}>Ops</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {apiSurfaces.map((surface) => (
+                {/* ── Packages tab ── */}
+                {bottomTab === 'packages' && (
+                  <>
+                    {isDepBusy && <p style={styles.muted}>Analysis in progress — this may take several minutes…</p>}
+                    {!isDepBusy && packages.length === 0 && (
+                      <p style={styles.muted}>No packages analysed yet. Use <strong>Start A Job → Analyze Dependencies</strong> to run ORT.</p>
+                    )}
+                    {packages.length > 0 && (
                       <>
-                        <tr
-                          key={surface.id}
-                          onClick={() => toggleSurface(surface.id)}
-                          style={{ ...styles.entityRow, cursor: 'pointer' }}
-                        >
-                          <td style={{ ...styles.td, fontFamily: 'monospace', fontWeight: 500 }}>
-                            {expandedSurface === surface.id ? '▾ ' : '▸ '}
-                            {surface.name}
-                          </td>
-                          <td style={styles.td}>
-                            <span style={{ ...styles.confidenceBadge, ...apiStyleBadge(surface.apiStyle) }}>
-                              {surface.apiStyle === 'rpc' ? (surface.protocol ?? 'rpc').toUpperCase() : surface.apiStyle.toUpperCase()}
-                            </span>
-                          </td>
-                          <td style={{ ...styles.td, fontFamily: 'monospace', fontSize: 12, color: '#57606a' }}>
-                            {surface.basePath ?? surface.packageOrModule ?? '—'}
-                          </td>
-                          <td style={{ ...styles.td, textAlign: 'right' as const }}>{surface.opCount ?? 0}</td>
-                        </tr>
-                        {expandedSurface === surface.id && (
-                          <tr key={`${surface.id}-ops`}>
-                            <td colSpan={4} style={{ padding: 0 }}>
-                              {!apiOps[surface.id] ? (
-                                <p style={{ ...styles.muted, padding: '8px 24px' }}>Loading…</p>
-                              ) : apiOps[surface.id].length === 0 ? (
-                                <p style={{ ...styles.muted, padding: '8px 24px' }}>No operations found.</p>
-                              ) : (
-                                <table style={{ ...styles.pkgTable, margin: '0 0 0 24px', width: 'calc(100% - 24px)', borderTop: 'none', borderRadius: 0 }}>
-                                  <thead>
-                                    <tr>
-                                      {surface.apiStyle === 'http' ? (
-                                        <>
-                                          <th style={{ ...styles.th, background: '#f0f2f5', width: 80 }}>Method</th>
-                                          <th style={{ ...styles.th, background: '#f0f2f5' }}>Path</th>
-                                          <th style={{ ...styles.th, background: '#f0f2f5' }}>Returns</th>
-                                          <th style={{ ...styles.th, background: '#f0f2f5', textAlign: 'right' as const }}>Params</th>
-                                        </>
+                        <table style={styles.pkgTable}>
+                          <thead>
+                            <tr>
+                              <th style={styles.th}>Package</th>
+                              <th style={styles.th}>Type</th>
+                              <th style={styles.th}>Version</th>
+                              <th style={styles.th}>License(s)</th>
+                              <th style={styles.th}>Description</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {packages.slice(pkgPage * pkgPageSize, (pkgPage + 1) * pkgPageSize).map((pkg) => (
+                              <tr key={pkg.id}>
+                                <td style={styles.td}>
+                                  {pkg.homepageUrl ? (
+                                    <a href={pkg.homepageUrl} target="_blank" rel="noopener noreferrer" style={styles.link}>
+                                      {pkg.namespace ? `${pkg.namespace}/${pkg.name}` : pkg.name}
+                                    </a>
+                                  ) : (
+                                    pkg.namespace ? `${pkg.namespace}/${pkg.name}` : pkg.name
+                                  )}
+                                </td>
+                                <td style={styles.td}>{pkg.type ?? '—'}</td>
+                                <td style={styles.td}>{pkg.version ?? '—'}</td>
+                                <td style={styles.td}>
+                                  {pkg.declaredLicenses && pkg.declaredLicenses.length > 0
+                                    ? pkg.declaredLicenses.join(', ')
+                                    : '—'}
+                                </td>
+                                <td style={{ ...styles.td, ...styles.descCell }}>
+                                  {pkg.description
+                                    ? <span title={pkg.description}>
+                                        {pkg.description.length > 20
+                                          ? pkg.description.slice(0, 20) + '…'
+                                          : pkg.description}
+                                      </span>
+                                    : '—'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <div style={styles.pageSizeRow}>
+                          <span style={styles.pageSizeLabel}>Show</span>
+                          <select style={styles.pageSizeSelect} value={pkgPageSize} onChange={(e) => { setPkgPageSize(Number(e.target.value)); setPkgPage(0) }}>
+                            {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
+                          </select>
+                          <span style={styles.pageSizeLabel}>per page</span>
+                        </div>
+                        <Pager page={pkgPage} totalItems={packages.length} pageSize={pkgPageSize} onChange={setPkgPage} />
+                      </>
+                    )}
+                  </>
+                )}
+
+                {/* ── API Surfaces tab ── */}
+                {bottomTab === 'apis' && (
+                  <>
+                    {apiApproaches.length > 0 && (
+                      <div style={styles.approachBadges}>
+                        {apiApproaches.map((a) => (
+                          <span key={a.id} style={{ ...styles.approachBadge, ...confidenceStyle(a.confidence) }} title={a.signals?.join('\n')}>
+                            {API_APPROACH_LABELS[a.approach] ?? a.approach}
+                            {a.endpointCount != null ? ` (${a.endpointCount})` : ''}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {isApiBusy && <p style={styles.muted}>Detection in progress…</p>}
+                    {!isApiBusy && apiSurfaces.length === 0 && apiStatus === 'idle' && (
+                      <p style={styles.muted}>No API data yet. Use <strong>Start A Job → Detect APIs</strong> to analyze.</p>
+                    )}
+                    {!isApiBusy && apiSurfaces.length === 0 && apiStatus !== 'idle' && (
+                      <p style={styles.muted}>No API surfaces detected in this repository.</p>
+                    )}
+                    {apiSurfaces.length > 0 && (
+                      <>
+                        <table style={styles.pkgTable}>
+                          <thead>
+                            <tr>
+                              <th style={styles.th}>Surface</th>
+                              <th style={styles.th}>Style</th>
+                              <th style={styles.th}>Base Path / Package</th>
+                              <th style={{ ...styles.th, textAlign: 'right' as const }}>Ops</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {apiSurfaces.slice(apiPage * apiPageSize, (apiPage + 1) * apiPageSize).map((surface) => (
+                              <>
+                                <tr
+                                  key={surface.id}
+                                  onClick={() => toggleSurface(surface.id)}
+                                  style={{ ...styles.entityRow, cursor: 'pointer' }}
+                                >
+                                  <td style={{ ...styles.td, fontFamily: 'monospace', fontWeight: 500 }}>
+                                    {expandedSurface === surface.id ? '▾ ' : '▸ '}
+                                    {surface.name}
+                                  </td>
+                                  <td style={styles.td}>
+                                    <span style={{ ...styles.confidenceBadge, ...apiStyleBadge(surface.apiStyle) }}>
+                                      {surface.apiStyle === 'rpc' ? (surface.protocol ?? 'rpc').toUpperCase() : surface.apiStyle.toUpperCase()}
+                                    </span>
+                                  </td>
+                                  <td style={{ ...styles.td, fontFamily: 'monospace', fontSize: 12, color: '#57606a' }}>
+                                    {surface.basePath ?? surface.packageOrModule ?? '—'}
+                                  </td>
+                                  <td style={{ ...styles.td, textAlign: 'right' as const }}>{surface.opCount ?? 0}</td>
+                                </tr>
+                                {expandedSurface === surface.id && (
+                                  <tr key={`${surface.id}-ops`}>
+                                    <td colSpan={4} style={{ padding: 0 }}>
+                                      {!apiOps[surface.id] ? (
+                                        <p style={{ ...styles.muted, padding: '8px 24px' }}>Loading…</p>
+                                      ) : apiOps[surface.id].length === 0 ? (
+                                        <p style={{ ...styles.muted, padding: '8px 24px' }}>No operations found.</p>
                                       ) : (
-                                        <>
-                                          <th style={{ ...styles.th, background: '#f0f2f5' }}>RPC Method</th>
-                                          <th style={{ ...styles.th, background: '#f0f2f5' }}>Request</th>
-                                          <th style={{ ...styles.th, background: '#f0f2f5' }}>Response</th>
-                                          <th style={{ ...styles.th, background: '#f0f2f5' }}>Streaming</th>
-                                        </>
+                                        <table style={{ ...styles.pkgTable, margin: '0 0 0 24px', width: 'calc(100% - 24px)', borderTop: 'none', borderRadius: 0 }}>
+                                          <thead>
+                                            <tr>
+                                              {surface.apiStyle === 'http' ? (
+                                                <>
+                                                  <th style={{ ...styles.th, background: '#f0f2f5', width: 80 }}>Method</th>
+                                                  <th style={{ ...styles.th, background: '#f0f2f5' }}>Path</th>
+                                                  <th style={{ ...styles.th, background: '#f0f2f5' }}>Returns</th>
+                                                  <th style={{ ...styles.th, background: '#f0f2f5', textAlign: 'right' as const }}>Params</th>
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <th style={{ ...styles.th, background: '#f0f2f5' }}>RPC Method</th>
+                                                  <th style={{ ...styles.th, background: '#f0f2f5' }}>Request</th>
+                                                  <th style={{ ...styles.th, background: '#f0f2f5' }}>Response</th>
+                                                  <th style={{ ...styles.th, background: '#f0f2f5' }}>Streaming</th>
+                                                </>
+                                              )}
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {apiOps[surface.id].map((op) => (
+                                              <tr key={op.id}>
+                                                {surface.apiStyle === 'http' ? (
+                                                  <>
+                                                    <td style={{ ...styles.td, fontSize: 12 }}>
+                                                      <span style={{ ...styles.confidenceBadge, ...httpMethodStyle(op.httpMethod ?? '') }}>
+                                                        {op.httpMethod ?? '—'}
+                                                      </span>
+                                                    </td>
+                                                    <td style={{ ...styles.td, fontFamily: 'monospace', fontSize: 12 }}>{op.path ?? '—'}</td>
+                                                    <td style={{ ...styles.td, fontSize: 12, color: '#57606a', fontFamily: 'monospace' }}>{op.returnType ?? '—'}</td>
+                                                    <td style={{ ...styles.td, fontSize: 12, textAlign: 'right' as const }}>{op.params?.length ?? 0}</td>
+                                                  </>
+                                                ) : (
+                                                  <>
+                                                    <td style={{ ...styles.td, fontFamily: 'monospace', fontSize: 12, fontWeight: 500 }}>{op.rpcMethodName ?? '—'}</td>
+                                                    <td style={{ ...styles.td, fontFamily: 'monospace', fontSize: 12, color: '#57606a' }}>{op.requestType ?? '—'}</td>
+                                                    <td style={{ ...styles.td, fontFamily: 'monospace', fontSize: 12, color: '#57606a' }}>{op.responseType ?? '—'}</td>
+                                                    <td style={{ ...styles.td, fontSize: 12 }}>
+                                                      {op.rpcStreaming && op.rpcStreaming !== 'none'
+                                                        ? <span style={{ ...styles.confidenceBadge, background: '#ddf4ff', color: '#0969da' }}>{op.rpcStreaming}</span>
+                                                        : <span style={{ color: '#57606a' }}>unary</span>}
+                                                    </td>
+                                                  </>
+                                                )}
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
                                       )}
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {apiOps[surface.id].map((op) => (
-                                      <tr key={op.id}>
-                                        {surface.apiStyle === 'http' ? (
-                                          <>
-                                            <td style={{ ...styles.td, fontSize: 12 }}>
-                                              <span style={{ ...styles.confidenceBadge, ...httpMethodStyle(op.httpMethod ?? '') }}>
-                                                {op.httpMethod ?? '—'}
-                                              </span>
-                                            </td>
-                                            <td style={{ ...styles.td, fontFamily: 'monospace', fontSize: 12 }}>{op.path ?? '—'}</td>
-                                            <td style={{ ...styles.td, fontSize: 12, color: '#57606a', fontFamily: 'monospace' }}>{op.returnType ?? '—'}</td>
-                                            <td style={{ ...styles.td, fontSize: 12, textAlign: 'right' as const }}>{op.params?.length ?? 0}</td>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <td style={{ ...styles.td, fontFamily: 'monospace', fontSize: 12, fontWeight: 500 }}>{op.rpcMethodName ?? '—'}</td>
-                                            <td style={{ ...styles.td, fontFamily: 'monospace', fontSize: 12, color: '#57606a' }}>{op.requestType ?? '—'}</td>
-                                            <td style={{ ...styles.td, fontFamily: 'monospace', fontSize: 12, color: '#57606a' }}>{op.responseType ?? '—'}</td>
-                                            <td style={{ ...styles.td, fontSize: 12 }}>
-                                              {op.rpcStreaming && op.rpcStreaming !== 'none'
-                                                ? <span style={{ ...styles.confidenceBadge, background: '#ddf4ff', color: '#0969da' }}>{op.rpcStreaming}</span>
-                                                : <span style={{ color: '#57606a' }}>unary</span>}
-                                            </td>
-                                          </>
-                                        )}
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              )}
-                            </td>
-                          </tr>
-                        )}
-                      </>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            {/* ── Data Entities section ── */}
-            <div style={{ ...styles.section, marginTop: 24 }}>
-              <div style={styles.sectionHeaderRow}>
-                <h3 style={styles.sectionHeading}>
-                  Data Entities
-                  {entities.length > 0 && <span style={styles.badge}>{entities.length}</span>}
-                </h3>
-                <div style={styles.sectionActions}>
-                  <span style={styles.updatedAt}>{entityUpdatedAt ? `Updated: ${entityUpdatedAt}` : 'Not yet run'}</span>
-                  <button style={{ ...styles.analyzeBtn, ...(isEntityBusy ? styles.analyzeBtnBusy : {}) }} disabled={isEntityBusy} onClick={() => startEntityJob()}>
-                    {isEntityBusy ? 'Analyzing…' : 'Analyze'}
-                  </button>
-                </div>
-              </div>
-
-              {entityApproaches.length > 0 && (
-                <div style={styles.approachBadges}>
-                  {entityApproaches.map((a) => (
-                    <span key={a.id} style={{ ...styles.approachBadge, ...confidenceStyle(a.confidence) }} title={a.signals?.join('\n')}>
-                      {APPROACH_LABELS[a.approach] ?? a.approach}
-                      {a.entityCount != null ? ` (${a.entityCount})` : ''}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {isEntityBusy && <p style={styles.muted}>Detection in progress…</p>}
-
-              {!isEntityBusy && entities.length === 0 && entityStatus === 'idle' && (
-                <p style={styles.muted}>No entity data yet. Use <strong>Start A Job → Detect Data Entities</strong> to analyze.</p>
-              )}
-
-              {!isEntityBusy && entities.length === 0 && entityStatus !== 'idle' && (
-                <p style={styles.muted}>No data entities detected in this repository.</p>
-              )}
-
-              {entities.length > 0 && (
-                <table style={styles.pkgTable}>
-                  <thead>
-                    <tr>
-                      <th style={styles.th}>Entity / Table</th>
-                      <th style={styles.th}>Type</th>
-                      <th style={{ ...styles.th, textAlign: 'right' as const }}>Fields</th>
-                      <th style={styles.th}>Source</th>
-                      <th style={styles.th}>Confidence</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {entities.map((entity) => (
-                      <>
-                        <tr
-                          key={entity.id}
-                          onClick={() => setExpandedEntity(expandedEntity === entity.id ? null : entity.id)}
-                          style={{ ...styles.entityRow, cursor: entity.fields?.length ? 'pointer' : 'default' }}
-                        >
-                          <td style={{ ...styles.td, fontFamily: 'monospace', fontWeight: 500 }}>
-                            {entity.fields?.length ? (expandedEntity === entity.id ? '▾ ' : '▸ ') : '  '}
-                            {entity.name}
-                          </td>
-                          <td style={styles.td}>{entity.entityType}</td>
-                          <td style={{ ...styles.td, textAlign: 'right' as const }}>{entity.fields?.length ?? 0}</td>
-                          <td style={styles.td}>{entity.sourceApproach ? (APPROACH_LABELS[entity.sourceApproach.approach] ?? entity.sourceApproach.approach) : '—'}</td>
-                          <td style={styles.td}>
-                            <span style={{ ...styles.confidenceBadge, ...confidenceStyle(entity.confidence) }}>
-                              {entity.confidence}
-                            </span>
-                          </td>
-                        </tr>
-                        {expandedEntity === entity.id && entity.fields && entity.fields.length > 0 && (
-                          <tr key={`${entity.id}-fields`}>
-                            <td colSpan={5} style={{ padding: 0 }}>
-                              <table style={{ ...styles.pkgTable, margin: '0 0 0 24px', width: 'calc(100% - 24px)', borderTop: 'none', borderRadius: 0 }}>
-                                <thead>
-                                  <tr>
-                                    <th style={{ ...styles.th, background: '#f0f2f5' }}>Column</th>
-                                    <th style={{ ...styles.th, background: '#f0f2f5' }}>Type</th>
-                                    <th style={{ ...styles.th, background: '#f0f2f5' }}>Normalized Type</th>
-                                    <th style={{ ...styles.th, background: '#f0f2f5' }}>Flags</th>
+                                    </td>
                                   </tr>
-                                </thead>
-                                <tbody>
-                                  {entity.fields.map((field) => (
-                                    <tr key={field.id}>
-                                      <td style={{ ...styles.td, fontFamily: 'monospace', fontSize: 12 }}>{field.name}</td>
-                                      <td style={{ ...styles.td, fontSize: 12, color: '#57606a' }}>{field.nativeType ?? '—'}</td>
-                                      <td style={{ ...styles.td, fontSize: 12 }}>{field.dataType}</td>
-                                      <td style={{ ...styles.td, fontSize: 11 }}>
-                                        {field.isPrimaryKey === 'true' && <span style={styles.flag}>PK</span>}
-                                        {field.isForeignKey === 'true' && <span style={styles.flag}>FK</span>}
-                                        {field.isUnique === 'true' && <span style={{ ...styles.flag, background: '#ddf4ff', color: '#0969da' }}>UQ</span>}
-                                        {field.isNullable === 'false' && <span style={{ ...styles.flag, background: '#fff8c5', color: '#7d4e00' }}>NN</span>}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </td>
-                          </tr>
-                        )}
+                                )}
+                              </>
+                            ))}
+                          </tbody>
+                        </table>
+                        <div style={styles.pageSizeRow}>
+                          <span style={styles.pageSizeLabel}>Show</span>
+                          <select style={styles.pageSizeSelect} value={apiPageSize} onChange={(e) => { setApiPageSize(Number(e.target.value)); setApiPage(0) }}>
+                            {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
+                          </select>
+                          <span style={styles.pageSizeLabel}>per page</span>
+                        </div>
+                        <Pager page={apiPage} totalItems={apiSurfaces.length} pageSize={apiPageSize} onChange={setApiPage} />
                       </>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+                    )}
+                  </>
+                )}
+
+                {/* ── Data Entities tab ── */}
+                {bottomTab === 'entities' && (
+                  <>
+                    {entityApproaches.length > 0 && (
+                      <div style={styles.approachBadges}>
+                        {entityApproaches.map((a) => (
+                          <span key={a.id} style={{ ...styles.approachBadge, ...confidenceStyle(a.confidence) }} title={a.signals?.join('\n')}>
+                            {APPROACH_LABELS[a.approach] ?? a.approach}
+                            {a.entityCount != null ? ` (${a.entityCount})` : ''}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {isEntityBusy && <p style={styles.muted}>Detection in progress…</p>}
+                    {!isEntityBusy && entities.length === 0 && entityStatus === 'idle' && (
+                      <p style={styles.muted}>No entity data yet. Use <strong>Start A Job → Detect Data Entities</strong> to analyze.</p>
+                    )}
+                    {!isEntityBusy && entities.length === 0 && entityStatus !== 'idle' && (
+                      <p style={styles.muted}>No data entities detected in this repository.</p>
+                    )}
+                    {entities.length > 0 && (
+                      <>
+                        <table style={styles.pkgTable}>
+                          <thead>
+                            <tr>
+                              <th style={styles.th}>Entity / Table</th>
+                              <th style={styles.th}>Type</th>
+                              <th style={{ ...styles.th, textAlign: 'right' as const }}>Fields</th>
+                              <th style={styles.th}>Source</th>
+                              <th style={styles.th}>Confidence</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {entities.slice(entityPage * entityPageSize, (entityPage + 1) * entityPageSize).map((entity) => (
+                              <>
+                                <tr
+                                  key={entity.id}
+                                  onClick={() => setExpandedEntity(expandedEntity === entity.id ? null : entity.id)}
+                                  style={{ ...styles.entityRow, cursor: entity.fields?.length ? 'pointer' : 'default' }}
+                                >
+                                  <td style={{ ...styles.td, fontFamily: 'monospace', fontWeight: 500 }}>
+                                    {entity.fields?.length ? (expandedEntity === entity.id ? '▾ ' : '▸ ') : '  '}
+                                    {entity.name}
+                                  </td>
+                                  <td style={styles.td}>{entity.entityType}</td>
+                                  <td style={{ ...styles.td, textAlign: 'right' as const }}>{entity.fields?.length ?? 0}</td>
+                                  <td style={styles.td}>{entity.sourceApproach ? (APPROACH_LABELS[entity.sourceApproach.approach] ?? entity.sourceApproach.approach) : '—'}</td>
+                                  <td style={styles.td}>
+                                    <span style={{ ...styles.confidenceBadge, ...confidenceStyle(entity.confidence) }}>
+                                      {entity.confidence}
+                                    </span>
+                                  </td>
+                                </tr>
+                                {expandedEntity === entity.id && entity.fields && entity.fields.length > 0 && (
+                                  <tr key={`${entity.id}-fields`}>
+                                    <td colSpan={5} style={{ padding: 0 }}>
+                                      <table style={{ ...styles.pkgTable, margin: '0 0 0 24px', width: 'calc(100% - 24px)', borderTop: 'none', borderRadius: 0 }}>
+                                        <thead>
+                                          <tr>
+                                            <th style={{ ...styles.th, background: '#f0f2f5' }}>Column</th>
+                                            <th style={{ ...styles.th, background: '#f0f2f5' }}>Type</th>
+                                            <th style={{ ...styles.th, background: '#f0f2f5' }}>Normalized Type</th>
+                                            <th style={{ ...styles.th, background: '#f0f2f5' }}>Flags</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {entity.fields.map((field) => (
+                                            <tr key={field.id}>
+                                              <td style={{ ...styles.td, fontFamily: 'monospace', fontSize: 12 }}>{field.name}</td>
+                                              <td style={{ ...styles.td, fontSize: 12, color: '#57606a' }}>{field.nativeType ?? '—'}</td>
+                                              <td style={{ ...styles.td, fontSize: 12 }}>{field.dataType}</td>
+                                              <td style={{ ...styles.td, fontSize: 11 }}>
+                                                {field.isPrimaryKey === 'true' && <span style={styles.flag}>PK</span>}
+                                                {field.isForeignKey === 'true' && <span style={styles.flag}>FK</span>}
+                                                {field.isUnique === 'true' && <span style={{ ...styles.flag, background: '#ddf4ff', color: '#0969da' }}>UQ</span>}
+                                                {field.isNullable === 'false' && <span style={{ ...styles.flag, background: '#fff8c5', color: '#7d4e00' }}>NN</span>}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </td>
+                                  </tr>
+                                )}
+                              </>
+                            ))}
+                          </tbody>
+                        </table>
+                        <div style={styles.pageSizeRow}>
+                          <span style={styles.pageSizeLabel}>Show</span>
+                          <select style={styles.pageSizeSelect} value={entityPageSize} onChange={(e) => { setEntityPageSize(Number(e.target.value)); setEntityPage(0) }}>
+                            {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
+                          </select>
+                          <span style={styles.pageSizeLabel}>per page</span>
+                        </div>
+                        <Pager page={entityPage} totalItems={entities.length} pageSize={entityPageSize} onChange={setEntityPage} />
+                      </>
+                    )}
+                  </>
+                )}
+
+              </div>
             </div>
           </>
         )}
@@ -907,25 +967,6 @@ const styles = {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     minHeight: '100vh',
     background: '#f6f8fa',
-  } as React.CSSProperties,
-  header: {
-    background: '#24292f',
-    padding: '0 32px',
-    display: 'flex',
-    alignItems: 'center',
-    height: 56,
-  } as React.CSSProperties,
-  logo: {
-    height: 54,
-    width: 54,
-    marginRight: 12,
-    flexShrink: 0,
-  } as React.CSSProperties,
-  title: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 600,
-    margin: 0,
   } as React.CSSProperties,
   content: {
     padding: 32,
@@ -1175,5 +1216,51 @@ const styles = {
   analyzeBtnBusy: {
     background: '#57606a',
     cursor: 'default',
+  } as React.CSSProperties,
+  tabBar: {
+    display: 'flex',
+    alignItems: 'center',
+    borderBottom: '1px solid #d0d7de',
+    padding: '0 8px',
+    minHeight: 48,
+  } as React.CSSProperties,
+  tabBtn: {
+    padding: '12px 16px',
+    background: 'none',
+    border: 'none',
+    borderBottom: '2px solid transparent',
+    cursor: 'pointer',
+    fontSize: 14,
+    color: '#57606a',
+    fontWeight: 400,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: -1,
+  } as React.CSSProperties,
+  tabBtnActive: {
+    borderBottomColor: '#0969da',
+    color: '#24292f',
+    fontWeight: 600,
+  } as React.CSSProperties,
+  pageSizeRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+    fontSize: 13,
+    color: '#57606a',
+  } as React.CSSProperties,
+  pageSizeLabel: {
+    color: '#57606a',
+  } as React.CSSProperties,
+  pageSizeSelect: {
+    padding: '3px 6px',
+    fontSize: 13,
+    border: '1px solid #d0d7de',
+    borderRadius: 6,
+    background: '#fff',
+    cursor: 'pointer',
+    color: '#24292f',
   } as React.CSSProperties,
 }

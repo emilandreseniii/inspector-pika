@@ -10,14 +10,15 @@ A GitHub repository analysis tool that helps you understand any repo at a glance
 
 ## What it does
 
-- **Repo exploration** — browse and search repositories for a GitHub org, with filtering and pagination
+- **Org browsing** — list all explored GitHub organisations; click through to see an org's repos
+- **Repo exploration** — browse and search repositories with filtering and pagination
+- **Package catalog** — a canonical registry of every package seen across all repos; browse by type (NPM, Maven, PyPI, Go, …), see all known versions and which repos use each one
 - **Language detection** — identify programming languages using [enry](https://github.com/go-enry/enry)
 - **Dependency analysis** — detect all packages a repo depends on using [ORT](https://github.com/oss-review-toolkit/ort) v83
 - **Entity analysis** — detect data models (tables, entities, schemas) across 30+ ORM and database frameworks spanning Java, Python, Go, TypeScript, Ruby, PHP, Rust, Elixir, Scala, Swift, and C#
 - **API analysis** — detect API surfaces (HTTP endpoints, gRPC services, GraphQL schemas) across 40+ frameworks spanning the same language set
-- **Job queue** — long-running analyses run as background jobs with live status polling; each section of the repository page shows when it was last analyzed and an Analyze button
-- **Job management** — view job details, inspect input/result/error output, and cancel stuck or unwanted jobs
-- **Persistent cache** — explored repos and analysis results are stored in PostgreSQL
+- **Job queue** — long-running analyses run as background jobs with live log streaming, status polling, and cancellation
+- **Persistent cache** — all explored data is stored in PostgreSQL and reused across sessions
 
 ## Tech Stack
 
@@ -116,4 +117,4 @@ npm run test:ui
 
 ## Screenshots
 
-See [docs/screenshots/screenshots.md](docs/screenshots/screenshots.md) for annotated screenshots of all major pages — repository list, repository detail (with language, dependency, and entity analysis data), job list, and job detail views (running, failed, and completed states).
+See [docs/screenshots/screenshots.md](docs/screenshots/screenshots.md) for annotated screenshots of all major pages — org list, repo list, package catalog, package detail, repository detail (with language, dependency, entity, and API analysis), job list, and job detail views.

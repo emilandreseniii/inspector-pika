@@ -1,6 +1,7 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import type { Job } from '@inspector-pika/shared'
+import AppHeader from '../components/AppHeader'
 
 const STATUS_COLORS: Record<string, string> = {
   pending: '#9a6700',
@@ -58,7 +59,16 @@ export default function JobDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [cancelling, setCancelling] = useState(false)
   const [cancelError, setCancelError] = useState<string | null>(null)
+  const [logs, setLogs] = useState<string>('')
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const logsBottomRef = useRef<HTMLDivElement | null>(null)
+
+  const fetchLogs = useCallback(() => {
+    return fetch(`/api/v1/jobs/${id}/logs`)
+      .then((r) => r.json())
+      .then((json) => { if (typeof json.data === 'string') setLogs(json.data) })
+      .catch(() => {})
+  }, [id])
 
   function fetchJob() {
     return fetch(`/api/v1/jobs/${id}`)
@@ -76,10 +86,14 @@ export default function JobDetailPage() {
   }
 
   useEffect(() => {
-    fetchJob().finally(() => setLoading(false))
-    pollRef.current = setInterval(fetchJob, 3000)
+    Promise.all([fetchJob(), fetchLogs()]).finally(() => setLoading(false))
+    pollRef.current = setInterval(() => { fetchJob(); fetchLogs() }, 3000)
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [id])
+
+  useEffect(() => {
+    logsBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [logs])
 
   async function handleCancel() {
     setCancelling(true)
@@ -99,14 +113,26 @@ export default function JobDetailPage() {
     }
   }
 
-  if (loading) return <div style={styles.page}><p style={styles.muted}>Loading…</p></div>
-  if (error) return <div style={styles.page}><p style={styles.errorText}>{error}</p></div>
+  if (loading) return (
+    <div style={styles.root}>
+      <AppHeader />
+      <div style={styles.page}><p style={styles.muted}>Loading…</p></div>
+    </div>
+  )
+  if (error) return (
+    <div style={styles.root}>
+      <AppHeader />
+      <div style={styles.page}><p style={styles.errorText}>{error}</p></div>
+    </div>
+  )
   if (!job) return null
 
   const isCancellable = ACTIVE_STATUSES.has(job.status)
   const label = jobLabel(job.type, job.input)
 
   return (
+    <div style={styles.root}>
+    <AppHeader />
     <div style={styles.page}>
       <div style={styles.header}>
         <button style={styles.backBtn} onClick={() => navigate('/jobs')}>← Back</button>
@@ -173,11 +199,27 @@ export default function JobDetailPage() {
           <pre style={styles.codeBlock}>{JSON.stringify(job.result, null, 2)}</pre>
         </div>
       )}
+
+      {logs && (
+        <div style={styles.section}>
+          <h3 style={styles.sectionHeading}>Log Output</h3>
+          <pre style={styles.logBlock}>
+            {logs}
+            <div ref={logsBottomRef} />
+          </pre>
+        </div>
+      )}
+    </div>
     </div>
   )
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  root: {
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    minHeight: '100vh',
+    background: '#f6f8fa',
+  },
   page: {
     maxWidth: 800,
     margin: '0 auto',
@@ -271,6 +313,21 @@ const styles: Record<string, React.CSSProperties> = {
     overflow: 'auto',
     margin: 0,
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+  },
+  logBlock: {
+    background: '#0d1117',
+    color: '#c9d1d9',
+    border: '1px solid #30363d',
+    borderRadius: 6,
+    padding: '12px 16px',
+    fontSize: 12,
+    lineHeight: 1.6,
+    overflow: 'auto',
+    maxHeight: 500,
+    margin: 0,
+    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-all',
   },
   muted: {
     color: '#57606a',

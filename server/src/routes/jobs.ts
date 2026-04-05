@@ -1,8 +1,9 @@
+import fs from 'fs/promises'
 import { Router, Request, Response, NextFunction } from 'express'
 import { eq, desc, and, ne } from 'drizzle-orm'
 import { db } from '../db'
 import { jobs } from '../db/schema'
-import { runJob } from '../services/jobRunner'
+import { runJob, jobLogPath } from '../services/jobRunner'
 import { CreateJobSchema } from '@inspector-pika/shared'
 
 export const jobsRouter = Router()
@@ -51,6 +52,22 @@ jobsRouter.get('/:id', async (req: Request, res: Response, next: NextFunction) =
     const [job] = await db.select().from(jobs).where(eq(jobs.id, id))
     if (!job) { res.status(404).json({ error: 'Job not found' }); return }
     res.json({ data: job })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// GET /api/v1/jobs/:id/logs
+jobsRouter.get('/:id/logs', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = parseInt(req.params.id, 10)
+    if (isNaN(id)) { res.status(400).json({ error: 'Invalid job id' }); return }
+    try {
+      const content = await fs.readFile(jobLogPath(id), 'utf-8')
+      res.json({ data: content })
+    } catch {
+      res.json({ data: '' })
+    }
   } catch (err) {
     next(err)
   }

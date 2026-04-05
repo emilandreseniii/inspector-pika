@@ -45,6 +45,18 @@ function jobLabel(type: string, input: Record<string, unknown>): string {
   return type
 }
 
+function jobTypeLabel(type: string): string {
+  if (type === 'explore_github_repo') return 'Explore Repo'
+  if (type === 'explore_github_org') return 'Explore Org'
+  return type
+}
+
+function jobRepo(type: string, input: Record<string, unknown>): string {
+  if (type === 'explore_github_repo') return String(input.repo ?? '—')
+  if (type === 'explore_github_org') return String(input.org ?? '—')
+  return '—'
+}
+
 // Search format: "org/apache"  "repo/apache/kafka"  or plain text
 function filterJobs(jobs: Job[], search: string): Job[] {
   const q = search.trim().toLowerCase()
@@ -169,7 +181,8 @@ export default function JobsTab() {
           <table style={styles.table}>
             <thead>
               <tr>
-                <th style={styles.th}>Description</th>
+                <th style={styles.th}>Type</th>
+                <th style={styles.th}>Repo</th>
                 <th style={styles.th}>Status</th>
                 <th style={styles.th}>Started</th>
                 <th style={styles.th}>Completed</th>
@@ -178,7 +191,8 @@ export default function JobsTab() {
             <tbody>
               {pageRows.map((job) => (
                 <tr key={job.id} style={styles.trClickable} onClick={() => navigate(`/jobs/${job.id}`)}>
-                  <td style={styles.td}>{jobLabel(job.type, job.input)}</td>
+                  <td style={styles.td}>{jobTypeLabel(job.type)}</td>
+                  <td style={styles.td}>{jobRepo(job.type, job.input)}</td>
                   <td style={styles.td}><StatusBadge status={job.status} /></td>
                   <td style={styles.td}>{job.startedAt ? new Date(job.startedAt).toLocaleString() : '—'}</td>
                   <td style={styles.td}>{job.completedAt ? new Date(job.completedAt).toLocaleString() : '—'}</td>
