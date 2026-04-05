@@ -83,10 +83,17 @@ describe('DiskManager', () => {
 
   // Build chainable drizzle mock helpers
   function mockSelect(rows: unknown[]) {
-    const chain = { from: vi.fn(), where: vi.fn(), orderBy: vi.fn() }
+    // Make the chain itself thenable so it resolves to `rows` at any point
+    // in the chain (whether the caller ends with .from(), .where(), or .orderBy())
+    const chain: any = {
+      from: vi.fn(),
+      where: vi.fn(),
+      orderBy: vi.fn(),
+      then: (resolve: any, reject: any) => Promise.resolve(rows).then(resolve, reject),
+    }
     chain.from.mockReturnValue(chain)
     chain.where.mockReturnValue(chain)
-    chain.orderBy.mockResolvedValue(rows)
+    chain.orderBy.mockReturnValue(chain)
     vi.mocked(db.select).mockReturnValue(chain as any)
     return chain
   }
@@ -257,6 +264,121 @@ describe('DiskManager', () => {
       // Should not throw even if rm fails
       await expect(manager.checkAndEvict(settings)).resolves.toBeUndefined()
       expect(db.delete).toHaveBeenCalled()
+    })
+  })
+
+  // ── backfill ─────────────────────────────────────────────────────────────────
+
+  describe('backfill', () => {
+    function makeDirent(name: string, isDir: boolean) {
+      return { name, isDirectory: () => isDir, isFile: () => !isDir }
+    }
+
+    it('inserts repo entries for existing source dirs not yet tracked', async () => {
+      // No existing entries in DB
+      mockSelect([])
+      // data/ contains one owner dir: 'acme'
+      vi.mocked(fs.readdir)
+        .mockResolvedValueOnce([makeDirent('acme', true), makeDirent('jobs', false)] as any)
+        // acme/ contains one repo: 'api'
+        .mockResolvedValueOnce([makeDirent('api', true)] as any)
+        // dirSize scan for data/acme/api/source: one file of 500 bytes
+        .mockResolvedValueOnce([makeDirent('main.py', false)] as any)
+      vi.mocked(fs.lstat)
+        .mockResolvedValueOnce({} as any)        // lstat(sourceDir) — dir exists
+        .mockResolvedValueOnce({ size: 500 } as any) // file in dirSize
+      const insert = mockInsert()
+
+      await manager.backfill('/data', '/data/jobs')
+
+      expect(insert.values).toHaveBeenCalledWith(expect.objectContaining({
+        entryType: 'repo',
+        key: 'acme/api',
+        sizeBytes: 500,
+      }))
+    })
+
+    it('skips repos whose source dir does not exist', async () => {
+      mockSelect([])
+      vi.mocked(fs.readdir)
+        .mockResolvedValueOnce([makeDirent('acme', true)] as any)
+        .mockResolvedValueOnce([makeDirent('ghost', true)] as any)
+      // lstat(sourceDir) throws → source dir absent
+      vi.mocked(fs.lstat).mockRejectedValue(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }))
+      mockInsert()
+
+      await manager.backfill('/data', '/data/jobs')
+
+      expect(db.insert).not.toHaveBeenCalled()
+    })
+
+    it('skips repos that are already tracked', async () => {
+      // Mark both the repo and logs dir as already tracked so no inserts happen
+      mockSelect([
+        { entryType: 'repo', key: 'acme/api' },
+        { entryType: 'logs', key: 'jobs' },
+      ])
+      vi.mocked(fs.readdir)
+        .mockResolvedValueOnce([makeDirent('acme', true)] as any)
+        .mockResolvedValueOnce([makeDirent('api', true)] as any)
+      mockInsert()
+
+      await manager.backfill('/data', '/data/jobs')
+
+      // Nothing should have been measured or inserted
+      expect(fs.lstat).not.toHaveBeenCalled()
+      expect(db.insert).not.toHaveBeenCalled()
+    })
+
+    it('skips the jobs directory when scanning for repo owners', async () => {
+      mockSelect([])
+      vi.mocked(fs.readdir)
+        // data/ contains only 'jobs'
+        .mockResolvedValueOnce([makeDirent('jobs', true)] as any)
+      mockInsert()
+
+      await manager.backfill('/data', '/data/jobs')
+
+      // No repos found, no inserts
+      expect(db.insert).not.toHaveBeenCalled()
+    })
+
+    it('tracks the logs directory if not yet tracked', async () => {
+      mockSelect([])
+      // No owner dirs
+      vi.mocked(fs.readdir)
+        .mockResolvedValueOnce([] as any)             // data/ is empty
+        .mockResolvedValueOnce([makeDirent('1.log', false)] as any) // dirSize of jobs dir
+      vi.mocked(fs.lstat)
+        .mockResolvedValueOnce({} as any)             // lstat(jobsDir) exists
+        .mockResolvedValueOnce({ size: 200 } as any)  // log file size
+      const insert = mockInsert()
+
+      await manager.backfill('/data', '/data/jobs')
+
+      expect(insert.values).toHaveBeenCalledWith(expect.objectContaining({
+        entryType: 'logs',
+        key: 'jobs',
+        sizeBytes: 200,
+      }))
+    })
+
+    it('skips logs directory if already tracked', async () => {
+      mockSelect([{ entryType: 'logs', key: 'jobs' }])
+      vi.mocked(fs.readdir).mockResolvedValueOnce([] as any)
+      mockInsert()
+
+      await manager.backfill('/data', '/data/jobs')
+
+      expect(db.insert).not.toHaveBeenCalled()
+    })
+
+    it('handles an unreadable data directory gracefully', async () => {
+      mockSelect([])
+      vi.mocked(fs.readdir).mockRejectedValue(new Error('ENOENT'))
+      mockInsert()
+
+      await expect(manager.backfill('/no/such/dir', '/data/jobs')).resolves.toBeUndefined()
     })
   })
 

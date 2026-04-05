@@ -8,7 +8,7 @@ import { backfillPackages } from './services/packagesBackfill'
 import { diskManager } from './services/diskManager'
 import { getSettings } from './services/settingsService'
 
-const PROJECT_ROOT = path.resolve(__dirname, '../../../')
+const PROJECT_ROOT = path.resolve(__dirname, '../../')
 const DATA_DIR = path.join(PROJECT_ROOT, 'data')
 const JOB_LOGS_DIR = path.join(DATA_DIR, 'jobs')
 
