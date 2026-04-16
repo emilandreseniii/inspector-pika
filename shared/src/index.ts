@@ -2,6 +2,14 @@ import { z } from 'zod'
 
 // ---- Repository ----
 
+export const RepositoryAnalysisStatusSchema = z.object({
+  hasLanguages: z.boolean(),
+  hasPackages: z.boolean(),
+  hasApis: z.boolean(),
+  hasEntities: z.boolean(),
+})
+export type RepositoryAnalysisStatus = z.infer<typeof RepositoryAnalysisStatusSchema>
+
 export const RepositorySchema = z.object({
   id: z.number(),
   provider: z.string(),
@@ -16,6 +24,7 @@ export const RepositorySchema = z.object({
   url: z.string().nullable(),
   fetchedAt: z.string(),
   createdAt: z.string(),
+  analysisStatus: RepositoryAnalysisStatusSchema.optional(),
 })
 
 export type Repository = z.infer<typeof RepositorySchema>
@@ -274,6 +283,8 @@ export const OrgSchema = z.object({
   owner: z.string(),
   provider: z.string(),
   repoCount: z.number(),
+  analyzedCount: z.number().optional(),
+  analyzedPct: z.number().optional(),
 })
 export type Org = z.infer<typeof OrgSchema>
 

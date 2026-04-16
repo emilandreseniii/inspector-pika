@@ -6,3 +6,13 @@ body, html {
   margin: 0;
   padding: 0;
 }
+
+/* Remove browser-default focus underline/outline on nav tab buttons.
+   border-bottom-color must be reset explicitly — Chromium overrides
+   transparent borders on focused buttons with rgb(0,0,0).
+   Inline styles (active tab orange) have higher specificity and still win. */
+button:focus, button:focus-visible {
+  outline: none;
+  text-decoration: none;
+  border-bottom-color: transparent;
+}

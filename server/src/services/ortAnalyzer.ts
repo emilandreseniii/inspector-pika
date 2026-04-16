@@ -60,46 +60,52 @@ const ORT_GLOBAL_CONFIG_DIR = path.join(
 )
 const ORT_GLOBAL_CONFIG_PATH = path.join(ORT_GLOBAL_CONFIG_DIR, 'config.yml')
 
-// Base ORT config written on first run if no config exists
+// Base ORT config written on first run if no config exists.
+// enabledPackageManagers lists only tools confirmed installed on this machine.
+// Excluded: SBT (Scala), Bundler (Ruby), Composer (PHP), Bazel, Bower, Carthage,
+//           CocoaPods, Conan, Gleam, Mix, Pub, Rebar3, Stack, SwiftPM.
 const ORT_BASE_CONFIG = `ort:
   analyzer:
     allowDynamicVersions: true
-`
-
-async function withNpmDisabled<T>(fn: () => Promise<T>): Promise<T> {
-  const backupPath = ORT_GLOBAL_CONFIG_PATH + '.bak'
-  // ORT v83 config requires 'ort:' root key; use enabledPackageManagers to whitelist non-npm managers
-  const disableYaml = `ort:
-  analyzer:
-    allowDynamicVersions: true
     enabledPackageManagers:
-      - Bazel
-      - Bundler
       - Cargo
-      - Carthage
-      - CocoaPods
-      - Composer
-      - Conan
-      - Gleam
       - GoMod
       - GradleInspector
       - Maven
-      - Mix
+      - NPM
       - NuGet
       - OrtProjectFile
       - PIP
       - Pipenv
       - PNPM
       - Poetry
-      - Pub
-      - Rebar3
-      - SBT
       - SpdxDocumentFile
-      - Stack
-      - SwiftPM
       - Tycho
       - Unmanaged
+      - Yarn
       - Yarn2
+`
+
+async function withNpmDisabled<T>(fn: () => Promise<T>): Promise<T> {
+  const backupPath = ORT_GLOBAL_CONFIG_PATH + '.bak'
+  // ORT v83 config requires 'ort:' root key; use enabledPackageManagers to whitelist non-npm managers
+  // Same as ORT_BASE_CONFIG but without NPM/Yarn/PNPM/Yarn2
+  const disableYaml = `ort:
+  analyzer:
+    allowDynamicVersions: true
+    enabledPackageManagers:
+      - Cargo
+      - GoMod
+      - GradleInspector
+      - Maven
+      - NuGet
+      - OrtProjectFile
+      - PIP
+      - Pipenv
+      - Poetry
+      - SpdxDocumentFile
+      - Tycho
+      - Unmanaged
 `
   // Back up existing config if any
   const existing = await fs.readFile(ORT_GLOBAL_CONFIG_PATH, 'utf-8').catch(() => null)
@@ -176,10 +182,10 @@ export async function runOrtAnalyze(sourceDir: string, ortOutputDir: string, onL
   // Remove any result from a previous run so ORT doesn't refuse to write a new one
   await fs.unlink(resultPath).catch(() => {})
 
-  // Bootstrap a base ORT config if none exists (sets allowDynamicVersions so npm projects
-  // without a lockfile can still be analyzed)
-  const configExists = await fs.access(ORT_GLOBAL_CONFIG_PATH).then(() => true).catch(() => false)
-  if (!configExists) {
+  // Bootstrap a base ORT config if none exists or if it's missing enabledPackageManagers
+  // (the list restricts ORT to tools known to be installed on this machine).
+  const existingConfig = await fs.readFile(ORT_GLOBAL_CONFIG_PATH, 'utf-8').catch(() => null)
+  if (!existingConfig || !existingConfig.includes('enabledPackageManagers')) {
     await fs.mkdir(ORT_GLOBAL_CONFIG_DIR, { recursive: true })
     await fs.writeFile(ORT_GLOBAL_CONFIG_PATH, ORT_BASE_CONFIG, 'utf-8')
   }

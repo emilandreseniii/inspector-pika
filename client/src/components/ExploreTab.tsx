@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import type { Repository } from '@inspector-pika/shared'
 import SearchBox from './SearchBox'
 import Pager from './Pager'
+import RepositoryTable from './RepositoryTable'
 
 const PAGE_SIZE = 25
 
@@ -33,7 +33,6 @@ function getSuggestions(repos: Repository[], search: string): string[] {
 }
 
 export default function ExploreTab() {
-  const navigate = useNavigate()
   const [repos, setRepos] = useState<Repository[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -87,35 +86,7 @@ export default function ExploreTab() {
 
       {pageRows.length > 0 && (
         <>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>Repository</th>
-                <th style={styles.th}>Provider</th>
-                <th style={styles.th}>Stars</th>
-                <th style={styles.th}>Forks</th>
-                <th style={styles.th}>Last Fetched</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((repo) => (
-                <tr key={repo.id}>
-                  <td style={styles.td}>
-                    <button
-                      style={styles.repoLink}
-                      onClick={() => navigate(`/repositories/${repo.id}`)}
-                    >
-                      {repo.fullName}
-                    </button>
-                  </td>
-                  <td style={styles.td}>{repo.provider}</td>
-                  <td style={styles.td}>{repo.stars?.toLocaleString() ?? '—'}</td>
-                  <td style={styles.td}>{repo.forks?.toLocaleString() ?? '—'}</td>
-                  <td style={styles.td}>{new Date(repo.fetchedAt).toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <RepositoryTable repos={pageRows} />
           <Pager page={page} totalItems={filtered.length} pageSize={PAGE_SIZE} onChange={setPage} />
         </>
       )}
@@ -123,58 +94,26 @@ export default function ExploreTab() {
   )
 }
 
-const styles = {
+const styles: Record<string, React.CSSProperties> = {
   topBar: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 16,
     marginBottom: 20,
-  } as React.CSSProperties,
+  },
   heading: {
     fontSize: 20,
     fontWeight: 600,
     margin: 0,
     flexShrink: 0,
-  } as React.CSSProperties,
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse' as const,
-    background: '#fff',
-    border: '1px solid #d0d7de',
-    borderRadius: 8,
-    overflow: 'hidden',
-    fontSize: 14,
-  } as React.CSSProperties,
-  th: {
-    padding: '10px 16px',
-    textAlign: 'left' as const,
-    fontWeight: 600,
-    background: '#f6f8fa',
-    borderBottom: '1px solid #d0d7de',
-    color: '#24292f',
-    fontSize: 13,
-  } as React.CSSProperties,
-  td: {
-    padding: '10px 16px',
-    borderBottom: '1px solid #f6f8fa',
-    color: '#24292f',
-  } as React.CSSProperties,
-  repoLink: {
-    background: 'none',
-    border: 'none',
-    color: '#0969da',
-    cursor: 'pointer',
-    fontSize: 14,
-    padding: 0,
-    fontWeight: 500,
-  } as React.CSSProperties,
+  },
   muted: {
     color: '#57606a',
     fontSize: 14,
-  } as React.CSSProperties,
+  },
   error: {
     color: 'crimson',
     fontSize: 14,
-  } as React.CSSProperties,
+  },
 }

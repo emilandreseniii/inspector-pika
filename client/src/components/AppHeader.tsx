@@ -40,19 +40,19 @@ export default function AppHeader() {
       {!isJobs && !isSettings && (
         <nav style={styles.subNav}>
           <button
-            style={{ ...styles.subTab, ...(activeSub === 'orgs' ? styles.subTabActive : {}) }}
+            style={{ ...styles.subTab, borderBottomColor: activeSub === 'orgs' ? '#fd8c73' : 'transparent', ...(activeSub === 'orgs' ? styles.subTabActiveText : {}) }}
             onClick={() => navigate('/orgs')}
           >
             Orgs
           </button>
           <button
-            style={{ ...styles.subTab, ...(activeSub === 'repos' ? styles.subTabActive : {}) }}
+            style={{ ...styles.subTab, borderBottomColor: activeSub === 'repos' ? '#fd8c73' : 'transparent', ...(activeSub === 'repos' ? styles.subTabActiveText : {}) }}
             onClick={() => navigate('/repos')}
           >
             Repos
           </button>
           <button
-            style={{ ...styles.subTab, ...(activeSub === 'packages' ? styles.subTabActive : {}) }}
+            style={{ ...styles.subTab, borderBottomColor: activeSub === 'packages' ? '#fd8c73' : 'transparent', ...(activeSub === 'packages' ? styles.subTabActiveText : {}) }}
             onClick={() => navigate('/packages')}
           >
             Packages
@@ -124,10 +124,11 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#57606a',
     fontWeight: 500,
     marginBottom: -1,
+    textDecoration: 'none',
+    outline: 'none',
   },
-  subTabActive: {
+  subTabActiveText: {
     color: '#24292f',
-    borderBottomColor: '#fd8c73',
     fontWeight: 600,
   },
 }

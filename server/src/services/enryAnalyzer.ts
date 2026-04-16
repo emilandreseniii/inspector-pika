@@ -2,7 +2,7 @@ import { spawn } from 'child_process'
 import path from 'path'
 
 const PROJECT_ROOT = path.resolve(__dirname, '../../../')
-const ENRY_BIN = path.join(PROJECT_ROOT, 'tools', 'enry', 'enry.exe')
+const ENRY_BIN = path.join(PROJECT_ROOT, 'tools', 'enry', process.platform === 'win32' ? 'enry.exe' : 'enry')
 
 export interface EnryLanguage {
   language: string

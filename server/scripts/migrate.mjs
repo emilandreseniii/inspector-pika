@@ -16,7 +16,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const dotenv = require('dotenv')
 dotenv.config({ path: path.join(__dirname, '../../.env') })
 
-const { default: postgres } = await import('file:///C:/dev/inspector-pika/node_modules/postgres/cjs/src/index.js')
+const { default: postgres } = await import('postgres')
 
 const sql = postgres(process.env.DATABASE_URL, { onnotice: () => {} })
 console.log('Connected to database.')

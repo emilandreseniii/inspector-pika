@@ -55,6 +55,7 @@ export default function OrgsTab() {
                 <th style={styles.th}>Organisation</th>
                 <th style={styles.th}>Provider</th>
                 <th style={{ ...styles.th, textAlign: 'right' }}>Repos</th>
+                <th style={{ ...styles.th, textAlign: 'right' }} title="Count and percentage of analysis types completed across all repos in this org">Analyzed</th>
               </tr>
             </thead>
             <tbody>
@@ -66,6 +67,9 @@ export default function OrgsTab() {
                   </td>
                   <td style={styles.td}>{org.provider}</td>
                   <td style={{ ...styles.td, textAlign: 'right' }}>{org.repoCount}</td>
+                  <td style={{ ...styles.td, textAlign: 'right', ...pctStyle(org.analyzedPct ?? 0) }}>
+                    {org.analyzedCount ?? 0} ({org.analyzedPct ?? 0}%)
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -75,6 +79,12 @@ export default function OrgsTab() {
       )}
     </div>
   )
+}
+
+function pctStyle(pct: number): React.CSSProperties {
+  if (pct === 100) return { color: '#1a7f37', fontWeight: 600 }
+  if (pct === 0) return { color: '#d0d7de' }
+  return {}
 }
 
 const styles: Record<string, React.CSSProperties> = {

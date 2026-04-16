@@ -8,8 +8,30 @@ export const repositoriesRouter = Router()
 // GET /api/v1/repositories
 repositoriesRouter.get('/', async (_req: Request, res: Response, next: NextFunction) => {
   try {
-    const rows = await db.select().from(repositories).orderBy(desc(repositories.fetchedAt))
-    res.json({ data: rows })
+    const [rows, langRepoIds, pkgRepoIds, apiRepoIds, entityRepoIds] = await Promise.all([
+      db.select().from(repositories).orderBy(desc(repositories.fetchedAt)),
+      db.selectDistinct({ repoId: repoLanguages.repoId }).from(repoLanguages),
+      db.selectDistinct({ repoId: repoPackages.repoId }).from(repoPackages),
+      db.selectDistinct({ repoId: repoApiSurfaces.repoId }).from(repoApiSurfaces),
+      db.selectDistinct({ repoId: repoEntityApproaches.repoId }).from(repoEntityApproaches),
+    ])
+
+    const langSet = new Set(langRepoIds.map((r) => r.repoId))
+    const pkgSet = new Set(pkgRepoIds.map((r) => r.repoId))
+    const apiSet = new Set(apiRepoIds.map((r) => r.repoId))
+    const entitySet = new Set(entityRepoIds.map((r) => r.repoId))
+
+    const data = rows.map((repo) => ({
+      ...repo,
+      analysisStatus: {
+        hasLanguages: langSet.has(repo.id),
+        hasPackages: pkgSet.has(repo.id),
+        hasApis: apiSet.has(repo.id),
+        hasEntities: entitySet.has(repo.id),
+      },
+    }))
+
+    res.json({ data })
   } catch (err) {
     next(err)
   }

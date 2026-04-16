@@ -1,0 +1,12 @@
+node_modules
+*/node_modules
+dist/
+*/dist/
+shared/dist/
+data/
+tools/
+.env
+test-results/
+playwright-report/
+.git
+.claude/settings.local.json
