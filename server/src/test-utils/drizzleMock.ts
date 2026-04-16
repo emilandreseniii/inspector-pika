@@ -10,6 +10,7 @@ export function makeChain<T = unknown[]>(data: T = [] as unknown as T) {
     where: vi.fn(),
     orderBy: vi.fn(),
     limit: vi.fn(),
+    groupBy: vi.fn(),
     values: vi.fn(),
     set: vi.fn(),
     returning: vi.fn(),

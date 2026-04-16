@@ -4,7 +4,7 @@ import express from 'express'
 import { makeChain } from '../../test-utils/drizzleMock'
 
 vi.mock('../../db', () => ({
-  db: { select: vi.fn(), insert: vi.fn(), update: vi.fn(), delete: vi.fn() },
+  db: { select: vi.fn(), selectDistinct: vi.fn(), insert: vi.fn(), update: vi.fn(), delete: vi.fn() },
 }))
 
 import { db } from '../../db'
@@ -31,21 +31,26 @@ const mockPackage = {
 
 const mockLanguage = { id: 1, repoId: 1, language: 'Java', bytes: 9500 }
 
-beforeEach(() => vi.mocked(db.select).mockImplementation(() => makeChain([])))
+beforeEach(() => {
+  vi.mocked(db.select).mockImplementation(() => makeChain([]))
+  vi.mocked(db.selectDistinct).mockImplementation(() => makeChain([]))
+})
 
 // ─── GET /repositories ───────────────────────────────────────────────────────
 
 describe('GET /api/v1/repositories', () => {
   it('returns 200 with an array', async () => {
     vi.mocked(db.select).mockImplementation(() => makeChain([mockRepo]))
+    // selectDistinct already returns [] from beforeEach (no analysis data)
     const res = await request(app).get('/api/v1/repositories')
     expect(res.status).toBe(200)
     expect(res.body.data).toHaveLength(1)
     expect(res.body.data[0].fullName).toBe('apache/kafka')
+    expect(res.body.data[0].analysisStatus).toEqual({ hasLanguages: false, hasPackages: false, hasApis: false, hasEntities: false })
   })
 
   it('returns 200 with empty array when no repos exist', async () => {
-    vi.mocked(db.select).mockImplementation(() => makeChain([]))
+    // select and selectDistinct both return [] from beforeEach
     const res = await request(app).get('/api/v1/repositories')
     expect(res.status).toBe(200)
     expect(res.body.data).toEqual([])
